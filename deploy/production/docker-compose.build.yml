@@ -1,5 +1,6 @@
 # NewsAnalyzer v2 - Deployment Docker Compose
 # Builds images locally on the server
+# Run from repo root: docker compose -f deploy/production/docker-compose.build.yml up
 
 services:
   nginx:
@@ -34,7 +35,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ../../backend
       dockerfile: Dockerfile.prod
     container_name: newsanalyzer-backend
     restart: unless-stopped
@@ -63,7 +64,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../../frontend
       dockerfile: Dockerfile
     container_name: newsanalyzer-frontend
     restart: unless-stopped
@@ -78,7 +79,7 @@ services:
 
   reasoning-service:
     build:
-      context: ./reasoning-service
+      context: ../../reasoning-service
       dockerfile: Dockerfile
     container_name: newsanalyzer-reasoning-service
     restart: unless-stopped

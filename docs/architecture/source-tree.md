@@ -15,6 +15,7 @@ AIProject2/
 ├── frontend/                   # Next.js React Application
 ├── reasoning-service/          # Python FastAPI + OWL Reasoning
 ├── api-tests/                  # REST Assured API Integration Tests (planned)
+├── deploy/                     # Docker Compose & Dockerfiles (dev + production)
 ├── docs/                       # Project documentation
 ├── .bmad-core/                 # BMAD methodology framework
 ├── .bmad-infrastructure-devops/# Infrastructure templates
@@ -495,13 +496,39 @@ docs/
 
 ---
 
+## Deployment & Docker
+
+```
+deploy/
+├── dev/                                 # Local Docker Desktop development
+│   ├── docker-compose.yml              # Full stack dev (all services, hot reload)
+│   ├── Dockerfile.backend              # JDK + Maven + JMX for VisualVM
+│   ├── Dockerfile.frontend             # Node dev server with HMR
+│   └── Dockerfile.reasoning            # Python + spaCy + Prolog, uvicorn --reload
+└── production/                          # Hetzner Cloud deployment
+    ├── docker-compose.yml              # Production (pulls GHCR images)
+    ├── docker-compose.build.yml        # Production (builds from source on server)
+    └── nginx/                          # Nginx reverse proxy config
+        ├── nginx.conf
+        └── conf.d/newsanalyzer.conf
+```
+
+| Compose File | Purpose | Usage |
+|---|---|---|
+| `docker-compose.dev.yml` (root) | Infra-only dev (Postgres + Redis) | `docker compose up` |
+| `deploy/dev/docker-compose.yml` | Full stack local dev with hot reload | `docker compose -f deploy/dev/docker-compose.yml up --build` |
+| `deploy/production/docker-compose.yml` | Production on Hetzner (GHCR images) | `docker compose -f deploy/production/docker-compose.yml up -d` |
+| `deploy/production/docker-compose.build.yml` | Production (builds from source) | `docker compose -f deploy/production/docker-compose.build.yml up -d` |
+
+---
+
 ## Root Files
 
 ```
 AIProject2/
 ├── README.md                            # Project overview
 ├── .gitignore                           # Git ignore rules
-├── docker-compose.yml                   # Local development stack (planned)
+├── docker-compose.dev.yml              # Infra-only dev stack (Postgres + Redis)
 ├── PHASE_1.6_RUN_THIS_NOW.md           # Phase 1.6 quick start
 ├── PHASE_1.6_AUTOMATED_DEPLOYMENT.md   # Deployment automation
 └── test_deployment.md                   # Deployment test results
@@ -517,6 +544,7 @@ AIProject2/
 | `frontend/` | User interface, client-side state | TypeScript |
 | `reasoning-service/` | NLP, OWL reasoning, enrichment | Python 3.11 |
 | `api-tests/` | API integration tests (REST Assured) | Java 17 |
+| `deploy/` | Docker Compose files and Dockerfiles (dev + production) | YAML/Dockerfile |
 | `docs/` | All project documentation | Markdown |
 | `.bmad-core/` | BMAD methodology framework | YAML/Markdown |
 | `.claude/` | Claude Code agent commands | Markdown |

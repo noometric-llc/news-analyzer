@@ -1,0 +1,23 @@
+# NewsAnalyzer Backend - Local Dev Image
+# Full JDK for DevTools hot reload + JMX/VisualVM support
+FROM maven:3.9-eclipse-temurin-17
+
+WORKDIR /app
+
+# Copy pom.xml and download dependencies (cached layer)
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copy Maven wrapper (used by entrypoint)
+COPY mvnw .
+COPY .mvn .mvn
+RUN chmod +x mvnw
+
+# Expose application port and JMX port for VisualVM
+EXPOSE 8080 9010
+
+# Source code is volume-mounted at runtime for hot reload
+# DevTools will detect classpath changes and trigger restart
+
+ENTRYPOINT ["./mvnw", "spring-boot:run", \
+  "-Dspring-boot.run.jvmArguments=-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost"]

@@ -1,0 +1,131 @@
+# NewsAnalyzer v2 - Full Stack Local Dev (Docker Desktop)
+# Runs all services with hot reload and VisualVM support
+# Usage: docker compose -f deploy/dev/docker-compose.yml up --build
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: newsanalyzer-dev-postgres
+    environment:
+      POSTGRES_DB: newsanalyzer_dev
+      POSTGRES_USER: newsanalyzer
+      POSTGRES_PASSWORD: changeme_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - newsanalyzer-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U newsanalyzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: newsanalyzer-dev-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - newsanalyzer-dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: ../deploy/dev/Dockerfile.backend
+    container_name: newsanalyzer-dev-backend
+    ports:
+      - "8080:8080"
+      - "9010:9010"
+    volumes:
+      - ../../backend/src:/app/src
+      - ../../backend/pom.xml:/app/pom.xml
+      - maven-cache:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/newsanalyzer_dev
+      - SPRING_DATASOURCE_USERNAME=newsanalyzer
+      - SPRING_DATASOURCE_PASSWORD=changeme_dev_password
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - REASONING_SERVICE_URL=http://reasoning-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - newsanalyzer-dev-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: ../deploy/dev/Dockerfile.frontend
+    container_name: newsanalyzer-dev-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../frontend/src:/app/src
+      - ../../frontend/public:/app/public
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+      - NEXT_PUBLIC_REASONING_SERVICE_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - newsanalyzer-dev-network
+
+  reasoning-service:
+    build:
+      context: ../../reasoning-service
+      dockerfile: ../deploy/dev/Dockerfile.reasoning
+    container_name: newsanalyzer-dev-reasoning
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../reasoning-service/app:/app/app
+      - ../../reasoning-service/ontology:/app/ontology
+    environment:
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_PORT=8000
+      - DEBUG=True
+      - BACKEND_API_URL=http://backend:8080
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      - backend
+    networks:
+      - newsanalyzer-dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  maven-cache:
+    driver: local
+
+networks:
+  newsanalyzer-dev-network:
+    driver: bridge
