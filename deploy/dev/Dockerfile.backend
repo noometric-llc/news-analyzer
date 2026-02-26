@@ -18,6 +18,10 @@ EXPOSE 8080 9010
 
 # Source code is volume-mounted at runtime for hot reload
 # DevTools will detect classpath changes and trigger restart
+# JMX/VisualVM flags are passed via JMX_OPTS env var in docker-compose
 
-ENTRYPOINT ["./mvnw", "spring-boot:run", \
-  "-Dspring-boot.run.jvmArguments=-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost"]
+# Unset MAVEN_CONFIG from base image - mvnw prepends it to Maven CLI args
+ENV MAVEN_CONFIG=
+
+# Shell form so $JMX_OPTS is expanded at runtime, targeting only the Spring Boot JVM
+ENTRYPOINT ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="$JMX_OPTS"
