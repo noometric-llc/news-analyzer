@@ -6,6 +6,7 @@ import { AdminBreadcrumb } from '@/components/admin/AdminBreadcrumb';
 import { GovOrgSyncStatusCard } from '@/components/admin/GovOrgSyncStatusCard';
 import { SyncButton } from '@/components/admin/SyncButton';
 import { CsvImportButton } from '@/components/admin/CsvImportButton';
+import { useGovernmentOrgSyncStatus } from '@/hooks/useGovernmentOrgs';
 
 const breadcrumbs = [
   { label: 'Admin', href: '/admin' },
@@ -15,6 +16,8 @@ const breadcrumbs = [
 ];
 
 export default function AgenciesPage() {
+  const { data: syncStatus } = useGovernmentOrgSyncStatus();
+
   return (
     <main className="container mx-auto py-8 px-4">
       <AdminBreadcrumb items={breadcrumbs} />
@@ -50,7 +53,7 @@ export default function AgenciesPage() {
               <SyncButton
                 type="gov-orgs"
                 title="Sync Government Orgs"
-                description="This will fetch ~300 agencies from the Federal Register API and update the database."
+                description={`This will fetch ~300 agencies from the Federal Register API and update the database. Up to ${syncStatus?.maxNewOrgs ?? 50} new organizations will be added per sync.`}
                 warning="May take 30-60 seconds to complete. Existing manually curated data will be preserved. Only executive branch agencies will be synced."
               />
             </div>

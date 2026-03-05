@@ -9,6 +9,7 @@ import org.newsanalyzer.model.GovernmentOrganization.OrganizationType;
 import org.newsanalyzer.repository.GovernmentOrganizationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,9 +31,14 @@ public class GovernmentOrgSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(GovernmentOrgSyncService.class);
 
+    private static final int ACRONYM_MAX_LENGTH = 50;
+
     private final FederalRegisterClient federalRegisterClient;
     private final GovernmentOrganizationRepository repository;
     private final ObjectMapper objectMapper;
+
+    @Value("${gov-org.sync.max-new-orgs:50}")
+    private int maxNewOrgs;
 
     private LocalDateTime lastSyncTime;
 
@@ -90,16 +96,19 @@ public class GovernmentOrgSyncService {
         private long totalOrganizations;
         private Map<String, Long> countByBranch;
         private boolean federalRegisterAvailable;
+        private int maxNewOrgs;
 
         public LocalDateTime getLastSync() { return lastSync; }
         public long getTotalOrganizations() { return totalOrganizations; }
         public Map<String, Long> getCountByBranch() { return countByBranch; }
         public boolean isFederalRegisterAvailable() { return federalRegisterAvailable; }
+        public int getMaxNewOrgs() { return maxNewOrgs; }
 
         public void setLastSync(LocalDateTime lastSync) { this.lastSync = lastSync; }
         public void setTotalOrganizations(long totalOrganizations) { this.totalOrganizations = totalOrganizations; }
         public void setCountByBranch(Map<String, Long> countByBranch) { this.countByBranch = countByBranch; }
         public void setFederalRegisterAvailable(boolean federalRegisterAvailable) { this.federalRegisterAvailable = federalRegisterAvailable; }
+        public void setMaxNewOrgs(int maxNewOrgs) { this.maxNewOrgs = maxNewOrgs; }
     }
 
     /**
@@ -132,13 +141,18 @@ public class GovernmentOrgSyncService {
         }
 
         // First pass: sync all agencies
+        boolean addLimitReached = false;
         for (FederalRegisterAgency agency : agencies) {
             try {
-                SyncAction action = syncAgency(agency);
+                SyncAction action = syncAgency(agency, result.getAdded() >= maxNewOrgs);
                 switch (action.type) {
                     case ADDED:
                         result.setAdded(result.getAdded() + 1);
                         log.debug("Added new organization: {}", agency.getName());
+                        if (result.getAdded() >= maxNewOrgs && !addLimitReached) {
+                            addLimitReached = true;
+                            log.info("Reached max-new-orgs limit ({}). Remaining unmatched agencies will be skipped.", maxNewOrgs);
+                        }
                         break;
                     case UPDATED:
                         result.setUpdated(result.getUpdated() + 1);
@@ -201,7 +215,7 @@ public class GovernmentOrgSyncService {
      * @param agency Federal Register agency data
      * @return SyncAction indicating what was done
      */
-    private SyncAction syncAgency(FederalRegisterAgency agency) {
+    private SyncAction syncAgency(FederalRegisterAgency agency, boolean addLimitReached) {
         // Try to match by acronym first (most reliable)
         Optional<GovernmentOrganization> existing = Optional.empty();
 
@@ -219,6 +233,10 @@ public class GovernmentOrgSyncService {
             boolean updated = updateOrganization(org, agency);
             repository.save(org);
             return new SyncAction(updated ? ActionType.UPDATED : ActionType.SKIPPED, org.getId());
+        } else if (addLimitReached) {
+            // Skip creating new org — limit reached
+            log.debug("Skipped new organization (limit reached): {}", agency.getName());
+            return new SyncAction(ActionType.SKIPPED, null);
         } else {
             // Create new organization
             GovernmentOrganization newOrg = createOrganization(agency);
@@ -238,6 +256,13 @@ public class GovernmentOrgSyncService {
     private boolean updateOrganization(GovernmentOrganization org, FederalRegisterAgency agency) {
         boolean updated = false;
 
+        // Fix existing acronyms that exceed column limit (from prior bad sync data)
+        if (org.getAcronym() != null && org.getAcronym().length() > ACRONYM_MAX_LENGTH) {
+            log.warn("Clearing oversized acronym for '{}': '{}' ({} chars)", org.getOfficialName(), org.getAcronym(), org.getAcronym().length());
+            org.setAcronym(null);
+            updated = true;
+        }
+
         // Update description only if currently null
         if (org.getDescription() == null && agency.getDescription() != null) {
             org.setDescription(agency.getDescription());
@@ -256,9 +281,10 @@ public class GovernmentOrgSyncService {
         }
         org.setMetadata(metadata);
 
-        // Update acronym if we didn't have one
+        // Update acronym if we didn't have one (skip if shortName exceeds column limit — not a real acronym)
         if ((org.getAcronym() == null || org.getAcronym().isEmpty())
-                && agency.getShortName() != null && !agency.getShortName().isEmpty()) {
+                && agency.getShortName() != null && !agency.getShortName().isEmpty()
+                && agency.getShortName().length() <= ACRONYM_MAX_LENGTH) {
             org.setAcronym(agency.getShortName());
             updated = true;
         }
@@ -277,7 +303,10 @@ public class GovernmentOrgSyncService {
         GovernmentOrganization org = new GovernmentOrganization();
 
         org.setOfficialName(agency.getName());
-        org.setAcronym(agency.getShortName());
+        // Only set acronym if it fits the column constraint (50 chars) — longer values are full names, not acronyms
+        if (agency.getShortName() != null && agency.getShortName().length() <= ACRONYM_MAX_LENGTH) {
+            org.setAcronym(agency.getShortName());
+        }
         org.setDescription(agency.getDescription());
 
         // Federal Register only has executive branch agencies
@@ -349,6 +378,7 @@ public class GovernmentOrgSyncService {
         status.setLastSync(lastSyncTime);
         status.setTotalOrganizations(repository.countActive());
         status.setFederalRegisterAvailable(federalRegisterClient.isApiAvailable());
+        status.setMaxNewOrgs(maxNewOrgs);
 
         // Count by branch
         Map<String, Long> countByBranch = new HashMap<>();

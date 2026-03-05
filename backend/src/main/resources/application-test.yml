@@ -63,6 +63,7 @@ federal-register:
 gov-org:
   sync:
     enabled: false
+    max-new-orgs: 50
 
 # Legislators
 legislators:

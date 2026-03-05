@@ -70,6 +70,7 @@ gov-org:
   sync:
     enabled: false
     schedule: "0 0 5 * * SUN"
+    max-new-orgs: 50
 
 # Legislators Enrichment (unitedstates/congress-legislators GitHub repo)
 legislators:

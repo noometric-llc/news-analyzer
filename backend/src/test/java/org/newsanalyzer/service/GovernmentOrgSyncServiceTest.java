@@ -42,9 +42,13 @@ class GovernmentOrgSyncServiceTest {
     private GovernmentOrgSyncService syncService;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         objectMapper = new ObjectMapper();
         syncService = new GovernmentOrgSyncService(federalRegisterClient, repository, objectMapper);
+        // Inject @Value field via reflection (not auto-injected in unit tests)
+        java.lang.reflect.Field maxNewOrgsField = GovernmentOrgSyncService.class.getDeclaredField("maxNewOrgs");
+        maxNewOrgsField.setAccessible(true);
+        maxNewOrgsField.setInt(syncService, 50);
     }
 
     // =========================================================================
@@ -365,6 +369,102 @@ class GovernmentOrgSyncServiceTest {
         assertThat(result.getErrors()).isEqualTo(0);
         assertThat(childOrg.getParentId()).isEqualTo(parentDbId);
         assertThat(childOrg.getOrgLevel()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should skip new orgs when max-new-orgs limit is reached")
+    void syncFromFederalRegister_maxNewOrgsLimit_skipsRemainingNew() throws Exception {
+        // Set limit to 1
+        java.lang.reflect.Field maxNewOrgsField = GovernmentOrgSyncService.class.getDeclaredField("maxNewOrgs");
+        maxNewOrgsField.setAccessible(true);
+        maxNewOrgsField.setInt(syncService, 1);
+
+        // Given - two new agencies (neither exists in DB)
+        FederalRegisterAgency agency1 = new FederalRegisterAgency();
+        agency1.setId(1);
+        agency1.setName("Department of Agriculture");
+        agency1.setShortName("USDA");
+
+        FederalRegisterAgency agency2 = new FederalRegisterAgency();
+        agency2.setId(2);
+        agency2.setName("Department of Commerce");
+        agency2.setShortName("DOC");
+
+        when(federalRegisterClient.fetchAllAgencies()).thenReturn(Arrays.asList(agency1, agency2));
+        when(repository.findByAcronymIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(repository.findByOfficialNameIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(repository.save(any(GovernmentOrganization.class))).thenAnswer(invocation -> {
+            GovernmentOrganization org = invocation.getArgument(0);
+            org.setId(UUID.randomUUID());
+            return org;
+        });
+
+        // When
+        GovernmentOrgSyncService.SyncResult result = syncService.syncFromFederalRegister();
+
+        // Then - first one added, second skipped due to limit
+        assertThat(result.getAdded()).isEqualTo(1);
+        assertThat(result.getSkipped()).isEqualTo(1);
+        assertThat(result.getErrors()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Should clear oversized acronym on existing org during update")
+    void syncFromFederalRegister_oversizedAcronym_clearsIt() {
+        // Given - use a >50 char value that was set as acronym in a prior bad sync
+        String oversizedAcronym = "A".repeat(51);
+
+        FederalRegisterAgency agency = new FederalRegisterAgency();
+        agency.setId(1);
+        agency.setName("Some Long Named Agency");
+        agency.setShortName(oversizedAcronym);
+
+        GovernmentOrganization existingOrg = new GovernmentOrganization();
+        existingOrg.setId(UUID.randomUUID());
+        existingOrg.setOfficialName("Some Long Named Agency");
+        existingOrg.setAcronym(oversizedAcronym); // Bad data from prior sync
+
+        when(federalRegisterClient.fetchAllAgencies()).thenReturn(List.of(agency));
+        // shortName is > 50 chars so acronym lookup won't match, but name will
+        when(repository.findByOfficialNameIgnoreCase("Some Long Named Agency"))
+                .thenReturn(Optional.of(existingOrg));
+        when(repository.save(any(GovernmentOrganization.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        syncService.syncFromFederalRegister();
+
+        // Then - oversized acronym should be cleared
+        verify(repository).save(existingOrg);
+        assertThat(existingOrg.getAcronym()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should not set acronym when shortName exceeds 50 characters on new org")
+    void syncFromFederalRegister_longShortName_skipsAcronym() {
+        // Given
+        FederalRegisterAgency agency = new FederalRegisterAgency();
+        agency.setId(1);
+        agency.setName("Civil Rights Cold Case Records Review Board");
+        agency.setShortName("Civil Rights Cold Case Records Review Board"); // 45 chars — but test with > 50
+
+        // Use a truly >50 char short name
+        agency.setShortName("A".repeat(51));
+
+        when(federalRegisterClient.fetchAllAgencies()).thenReturn(List.of(agency));
+        when(repository.findByOfficialNameIgnoreCase(agency.getName())).thenReturn(Optional.empty());
+        when(repository.save(any(GovernmentOrganization.class))).thenAnswer(invocation -> {
+            GovernmentOrganization org = invocation.getArgument(0);
+            org.setId(UUID.randomUUID());
+            return org;
+        });
+
+        // When
+        syncService.syncFromFederalRegister();
+
+        // Then
+        ArgumentCaptor<GovernmentOrganization> captor = ArgumentCaptor.forClass(GovernmentOrganization.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getAcronym()).isNull();
     }
 
     // =========================================================================

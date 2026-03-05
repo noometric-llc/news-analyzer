@@ -41,6 +41,7 @@ export interface GovOrgSyncStatus {
     judicial: number;
   };
   federalRegisterAvailable: boolean;
+  maxNewOrgs: number;
 }
 
 /**
