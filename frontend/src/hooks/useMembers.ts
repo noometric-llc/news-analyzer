@@ -4,7 +4,7 @@
  * React Query hooks for member-related API calls.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { membersApi, type MemberListParams } from '@/lib/api/members';
 import type { PaginationParams } from '@/types/pagination';
 
@@ -130,28 +130,22 @@ export function useEnrichmentStatus() {
 
 /**
  * Hook to trigger member sync (admin only)
+ * Returns SyncJobStatus with jobId for polling via useSyncJob.
+ * Query invalidation is handled by SyncButton on job completion.
  */
 export function useMemberSync() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: () => membersApi.triggerSync(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: memberKeys.all });
-    },
   });
 }
 
 /**
  * Hook to trigger enrichment sync (admin only)
+ * Returns SyncJobStatus with jobId for polling via useSyncJob.
+ * Query invalidation is handled by SyncButton on job completion.
  */
 export function useEnrichmentSync() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (force: boolean = false) => membersApi.triggerEnrichmentSync(force),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: memberKeys.all });
-    },
   });
 }

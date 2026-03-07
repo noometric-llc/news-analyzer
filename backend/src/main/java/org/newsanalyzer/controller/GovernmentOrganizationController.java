@@ -5,12 +5,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.newsanalyzer.dto.CsvImportResult;
+import org.newsanalyzer.dto.SyncJobStatus;
 import org.newsanalyzer.model.GovernmentOrganization;
 import org.newsanalyzer.model.GovernmentOrganization.GovernmentBranch;
 import org.newsanalyzer.model.GovernmentOrganization.OrganizationType;
 import org.newsanalyzer.service.GovOrgCsvImportService;
 import org.newsanalyzer.service.GovernmentOrganizationService;
 import org.newsanalyzer.service.GovernmentOrgSyncService;
+import org.newsanalyzer.service.SyncJobRegistry;
+import org.newsanalyzer.service.SyncOrchestrator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -50,6 +53,8 @@ public class GovernmentOrganizationController {
     private final GovernmentOrganizationService service;
     private final GovernmentOrgSyncService syncService;
     private final GovOrgCsvImportService csvImportService;
+    private final SyncJobRegistry registry;
+    private final SyncOrchestrator orchestrator;
 
     // =====================================================================
     // CRUD Endpoints
@@ -276,21 +281,17 @@ public class GovernmentOrganizationController {
     // =====================================================================
 
     @PostMapping("/sync/federal-register")
-    @Operation(summary = "Sync from Federal Register API",
-               description = "Trigger sync of government organizations from Federal Register API. " +
-                       "Imports ~300 executive branch agencies with merge strategy.")
-    public ResponseEntity<GovernmentOrgSyncService.SyncResult> syncFromFederalRegister() {
-        log.info("Manual sync from Federal Register API triggered");
-        try {
-            GovernmentOrgSyncService.SyncResult result = syncService.syncFromFederalRegister();
-            log.info("Sync completed: {}", result);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Sync from Federal Register failed: {}", e.getMessage(), e);
-            GovernmentOrgSyncService.SyncResult errorResult = new GovernmentOrgSyncService.SyncResult();
-            errorResult.addError("Sync failed: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResult);
+    @Operation(summary = "Sync from Federal Register API (async)",
+               description = "Starts an async sync of government organizations from Federal Register API. " +
+                       "Returns immediately with a job ID. Poll GET /api/admin/sync/jobs/{jobId} for progress.")
+    public ResponseEntity<SyncJobStatus> syncFromFederalRegister() {
+        if (registry.isRunning("gov-orgs")) {
+            return ResponseEntity.status(409).build();
         }
+        log.info("Manual sync from Federal Register API triggered");
+        SyncJobStatus status = registry.startJob("gov-orgs");
+        orchestrator.runGovOrgSync(status.getJobId());
+        return ResponseEntity.accepted().body(status);
     }
 
     @GetMapping("/sync/status")

@@ -4,7 +4,7 @@
  * React Query hooks for committee-related API calls.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { committeesApi, type CommitteeListParams } from '@/lib/api/committees';
 import type { CommitteeChamber } from '@/types/committee';
 import type { PaginationParams } from '@/types/pagination';
@@ -112,28 +112,22 @@ export function useCommitteeCount() {
 
 /**
  * Hook to trigger committee sync (admin only)
+ * Returns SyncJobStatus with jobId for polling via useSyncJob.
+ * Query invalidation is handled by SyncButton on job completion.
  */
 export function useCommitteeSync() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: () => committeesApi.triggerSync(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: committeeKeys.all });
-    },
   });
 }
 
 /**
  * Hook to trigger membership sync (admin only)
+ * Returns SyncJobStatus with jobId for polling via useSyncJob.
+ * Query invalidation is handled by SyncButton on job completion.
  */
 export function useMembershipSync() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (congress?: number) => committeesApi.triggerMembershipSync(congress),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: committeeKeys.all });
-    },
   });
 }

@@ -9,9 +9,12 @@ import org.newsanalyzer.exception.ResourceNotFoundException;
 import org.newsanalyzer.model.Committee;
 import org.newsanalyzer.model.CommitteeChamber;
 import org.newsanalyzer.model.CommitteeMembership;
+import org.newsanalyzer.dto.SyncJobStatus;
 import org.newsanalyzer.service.CommitteeService;
 import org.newsanalyzer.service.CommitteeSyncService;
 import org.newsanalyzer.service.CommitteeMembershipSyncService;
+import org.newsanalyzer.service.SyncJobRegistry;
+import org.newsanalyzer.service.SyncOrchestrator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -48,13 +51,19 @@ public class CommitteeController {
     private final CommitteeService committeeService;
     private final CommitteeSyncService committeeSyncService;
     private final CommitteeMembershipSyncService membershipSyncService;
+    private final SyncJobRegistry registry;
+    private final SyncOrchestrator orchestrator;
 
     public CommitteeController(CommitteeService committeeService,
                                CommitteeSyncService committeeSyncService,
-                               CommitteeMembershipSyncService membershipSyncService) {
+                               CommitteeMembershipSyncService membershipSyncService,
+                               SyncJobRegistry registry,
+                               SyncOrchestrator orchestrator) {
         this.committeeService = committeeService;
         this.committeeSyncService = committeeSyncService;
         this.membershipSyncService = membershipSyncService;
+        this.registry = registry;
+        this.orchestrator = orchestrator;
     }
 
     // =====================================================================
@@ -216,30 +225,40 @@ public class CommitteeController {
     // =====================================================================
 
     @PostMapping("/sync")
-    @Operation(summary = "Trigger committee sync",
-               description = "Trigger a full sync of all committees from Congress.gov API (admin only)")
+    @Operation(summary = "Trigger committee sync (async)",
+               description = "Starts an async sync of all committees from Congress.gov API. " +
+                       "Returns immediately with a job ID. Poll GET /api/admin/sync/jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Sync completed"),
-        @ApiResponse(responseCode = "500", description = "Sync failed")
+        @ApiResponse(responseCode = "202", description = "Sync started"),
+        @ApiResponse(responseCode = "409", description = "Sync already in progress")
     })
-    public ResponseEntity<CommitteeSyncService.SyncResult> triggerSync() {
+    public ResponseEntity<SyncJobStatus> triggerSync() {
+        if (registry.isRunning("committees")) {
+            return ResponseEntity.status(409).build();
+        }
         log.info("Manual committee sync triggered via API");
-        CommitteeSyncService.SyncResult result = committeeSyncService.syncAllCommittees();
-        return ResponseEntity.ok(result);
+        SyncJobStatus status = registry.startJob("committees");
+        orchestrator.runCommitteeSync(status.getJobId());
+        return ResponseEntity.accepted().body(status);
     }
 
     @PostMapping("/sync/memberships")
-    @Operation(summary = "Trigger membership sync",
-               description = "Trigger a full sync of all committee memberships from Congress.gov API (admin only)")
+    @Operation(summary = "Trigger membership sync (async)",
+               description = "Starts an async sync of all committee memberships from Congress.gov API. " +
+                       "Returns immediately with a job ID. Poll GET /api/admin/sync/jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Sync completed"),
-        @ApiResponse(responseCode = "500", description = "Sync failed")
+        @ApiResponse(responseCode = "202", description = "Sync started"),
+        @ApiResponse(responseCode = "409", description = "Sync already in progress")
     })
-    public ResponseEntity<CommitteeMembershipSyncService.SyncResult> triggerMembershipSync(
+    public ResponseEntity<SyncJobStatus> triggerMembershipSync(
             @Parameter(description = "Congress session number (e.g., 118)")
             @RequestParam(defaultValue = "118") int congress) {
+        if (registry.isRunning("memberships")) {
+            return ResponseEntity.status(409).build();
+        }
         log.info("Manual membership sync triggered via API for Congress {}", congress);
-        CommitteeMembershipSyncService.SyncResult result = membershipSyncService.syncAllMemberships(congress);
-        return ResponseEntity.ok(result);
+        SyncJobStatus status = registry.startJob("memberships");
+        orchestrator.runMembershipSync(status.getJobId(), congress);
+        return ResponseEntity.accepted().body(status);
     }
 }

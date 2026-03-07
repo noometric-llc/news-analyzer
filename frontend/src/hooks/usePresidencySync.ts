@@ -5,6 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { SyncJobStatus } from '@/types/sync';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -153,7 +154,7 @@ async function fetchPresidencyLastResult(): Promise<PresidencySyncResult | null>
   return response.json();
 }
 
-async function triggerPresidencySync(): Promise<PresidencySyncResult> {
+async function triggerPresidencySync(): Promise<SyncJobStatus> {
   const response = await fetch(`${API_BASE}/api/admin/sync/presidencies`, {
     method: 'POST',
   });
@@ -238,6 +239,8 @@ export function usePresidencyLastResult() {
 
 /**
  * Hook to trigger presidency sync (admin only)
+ * Returns SyncJobStatus with jobId. The existing status polling
+ * (usePresidencySyncStatus with refetchInterval) handles progress tracking.
  */
 export function usePresidencySync() {
   const queryClient = useQueryClient();
@@ -245,11 +248,8 @@ export function usePresidencySync() {
   return useMutation({
     mutationFn: triggerPresidencySync,
     onSuccess: () => {
-      // Invalidate sync status to refresh
+      // Immediately refetch sync status so polling picks up the running state
       queryClient.invalidateQueries({ queryKey: presidencyKeys.syncStatus() });
-      queryClient.invalidateQueries({ queryKey: presidencyKeys.lastResult() });
-      // Also invalidate presidency list to show new data
-      queryClient.invalidateQueries({ queryKey: presidencyKeys.all });
     },
   });
 }

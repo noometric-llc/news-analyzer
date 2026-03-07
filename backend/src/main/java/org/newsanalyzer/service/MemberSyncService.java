@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Service for synchronizing Congressional member data from Congress.gov API.
@@ -31,6 +32,8 @@ import java.util.Optional;
 public class MemberSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(MemberSyncService.class);
+
+    private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
 
     private final CongressApiClient congressApiClient;
     private final CongressionalMemberService congressionalMemberService;
@@ -81,31 +84,41 @@ public class MemberSyncService {
     public SyncResult syncAllCurrentMembers() {
         SyncResult result = new SyncResult();
 
-        if (!congressApiClient.isConfigured()) {
-            log.error("Congress.gov API key not configured. Set CONGRESS_API_KEY environment variable.");
+        if (!syncInProgress.compareAndSet(false, true)) {
+            log.warn("Member sync already in progress, skipping duplicate request");
+            result.errors = 1;
             return result;
         }
 
-        log.info("Starting full sync of current Congress members");
-        List<JsonNode> members = congressApiClient.fetchAllCurrentMembers();
-        result.total = members.size();
-
-        for (JsonNode memberData : members) {
-            try {
-                boolean isNew = syncMember(memberData);
-                if (isNew) {
-                    result.added++;
-                } else {
-                    result.updated++;
-                }
-            } catch (Exception e) {
-                result.errors++;
-                log.error("Failed to sync member: {}", e.getMessage());
+        try {
+            if (!congressApiClient.isConfigured()) {
+                log.error("Congress.gov API key not configured. Set CONGRESS_API_KEY environment variable.");
+                return result;
             }
-        }
 
-        log.info("Sync completed: {}", result);
-        return result;
+            log.info("Starting full sync of current Congress members");
+            List<JsonNode> members = congressApiClient.fetchAllCurrentMembers();
+            result.total = members.size();
+
+            for (JsonNode memberData : members) {
+                try {
+                    boolean isNew = syncMember(memberData);
+                    if (isNew) {
+                        result.added++;
+                    } else {
+                        result.updated++;
+                    }
+                } catch (Exception e) {
+                    result.errors++;
+                    log.error("Failed to sync member: {}", e.getMessage());
+                }
+            }
+
+            log.info("Sync completed: {}", result);
+            return result;
+        } finally {
+            syncInProgress.set(false);
+        }
     }
 
     /**

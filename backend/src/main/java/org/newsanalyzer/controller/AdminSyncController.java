@@ -4,14 +4,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.newsanalyzer.dto.PlumImportResult;
-import org.newsanalyzer.dto.UsCodeImportResult;
+import org.newsanalyzer.dto.SyncJobStatus;
 import org.newsanalyzer.scheduler.EnrichmentScheduler;
 import org.newsanalyzer.scheduler.GovernmentOrgScheduler;
 import org.newsanalyzer.scheduler.RegulationSyncScheduler;
 import org.newsanalyzer.service.ExecutiveOrderSyncService;
 import org.newsanalyzer.service.PlumCsvImportService;
 import org.newsanalyzer.service.PresidentialSyncService;
+import org.newsanalyzer.service.SyncJobRegistry;
+import org.newsanalyzer.service.SyncOrchestrator;
 import org.newsanalyzer.service.UsCodeImportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,20 +20,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * REST Controller for administrative data synchronization operations.
  *
- * Provides endpoints for:
- * - Triggering PLUM CSV import from OPM
- * - Checking sync status
- * - Getting import statistics
+ * All sync POST endpoints are now async — they return HTTP 202 Accepted with a
+ * {@link SyncJobStatus} immediately. Clients poll GET /jobs/{jobId} for progress.
  *
  * Base Path: /api/admin/sync
- *
- * Note: These endpoints should be secured in production. Currently open for development.
  *
  * @author James (Dev Agent)
  * @since 2.0.0
@@ -45,6 +42,8 @@ public class AdminSyncController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminSyncController.class);
 
+    private final SyncJobRegistry registry;
+    private final SyncOrchestrator orchestrator;
     private final PlumCsvImportService plumImportService;
     private final UsCodeImportService usCodeImportService;
     private final PresidentialSyncService presidentialSyncService;
@@ -55,20 +54,9 @@ public class AdminSyncController {
     private final GovernmentOrgScheduler governmentOrgScheduler;
     private final EnrichmentScheduler enrichmentScheduler;
 
-    // Track ongoing imports to prevent concurrent runs (AtomicBoolean for thread-safe check-then-set)
-    private final AtomicBoolean plumImportInProgress = new AtomicBoolean(false);
-    private PlumImportResult lastPlumResult = null;
-
-    private final AtomicBoolean usCodeImportInProgress = new AtomicBoolean(false);
-    private UsCodeImportResult lastUsCodeResult = null;
-
-    private final AtomicBoolean presidentialSyncInProgress = new AtomicBoolean(false);
-    private PresidentialSyncService.SyncResult lastPresidentialResult = null;
-
-    private final AtomicBoolean eoSyncInProgress = new AtomicBoolean(false);
-    private ExecutiveOrderSyncService.SyncResult lastEoResult = null;
-
-    public AdminSyncController(PlumCsvImportService plumImportService,
+    public AdminSyncController(SyncJobRegistry registry,
+                               SyncOrchestrator orchestrator,
+                               PlumCsvImportService plumImportService,
                                UsCodeImportService usCodeImportService,
                                PresidentialSyncService presidentialSyncService,
                                ExecutiveOrderSyncService executiveOrderSyncService,
@@ -78,6 +66,8 @@ public class AdminSyncController {
                                GovernmentOrgScheduler governmentOrgScheduler,
                                @org.springframework.beans.factory.annotation.Autowired(required = false)
                                EnrichmentScheduler enrichmentScheduler) {
+        this.registry = registry;
+        this.orchestrator = orchestrator;
         this.plumImportService = plumImportService;
         this.usCodeImportService = usCodeImportService;
         this.presidentialSyncService = presidentialSyncService;
@@ -88,44 +78,55 @@ public class AdminSyncController {
     }
 
     // =====================================================================
+    // Job Polling Endpoints
+    // =====================================================================
+
+    @GetMapping("/jobs")
+    @Operation(summary = "List all sync jobs",
+               description = "Get all tracked sync jobs (most recent first). Keeps last 20 completed jobs in memory.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Job list returned")
+    })
+    public ResponseEntity<List<SyncJobStatus>> getAllJobs() {
+        return ResponseEntity.ok(registry.getAllJobs());
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    @Operation(summary = "Get sync job status",
+               description = "Poll this endpoint to track progress of an async sync job")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Job status returned"),
+        @ApiResponse(responseCode = "404", description = "Job not found")
+    })
+    public ResponseEntity<SyncJobStatus> getJob(@PathVariable String jobId) {
+        return registry.getJob(jobId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // =====================================================================
     // PLUM Import Endpoints
     // =====================================================================
 
     @PostMapping("/plum")
-    @Operation(summary = "Import PLUM data from OPM",
-               description = "Downloads and imports executive branch appointee data from the OPM PLUM CSV file. " +
-                       "Use offset and limit parameters to process in chunks (e.g., offset=0&limit=1000, " +
-                       "then offset=1000&limit=1000, etc.). Full dataset is ~21,000 records.")
+    @Operation(summary = "Import PLUM data from OPM (async)",
+               description = "Starts an async import of executive branch appointee data from the OPM PLUM CSV file. " +
+                       "Returns immediately with a job ID. Poll GET /jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Import completed successfully"),
-        @ApiResponse(responseCode = "409", description = "Import already in progress"),
-        @ApiResponse(responseCode = "500", description = "Import failed")
+        @ApiResponse(responseCode = "202", description = "Import started"),
+        @ApiResponse(responseCode = "409", description = "Import already in progress")
     })
-    public ResponseEntity<PlumImportResult> importPlumData(
+    public ResponseEntity<SyncJobStatus> importPlumData(
             @RequestParam(required = false) Integer offset,
             @RequestParam(required = false) Integer limit) {
-        if (!plumImportInProgress.compareAndSet(false, true)) {
-            log.warn("PLUM import already in progress");
+        if (registry.isRunning("plum")) {
             return ResponseEntity.status(409).build();
         }
 
         log.info("PLUM import triggered via API (offset={}, limit={})", offset, limit);
-
-        try {
-            PlumImportResult result = plumImportService.importFromUrl(offset, limit);
-            lastPlumResult = result;
-
-            if (result.getErrors() > 0) {
-                log.warn("PLUM import completed with {} errors", result.getErrors());
-            } else {
-                log.info("PLUM import completed successfully");
-            }
-
-            return ResponseEntity.ok(result);
-
-        } finally {
-            plumImportInProgress.set(false);
-        }
+        SyncJobStatus status = registry.startJob("plum");
+        orchestrator.runPlumImport(status.getJobId(), offset, limit);
+        return ResponseEntity.accepted().body(status);
     }
 
     @GetMapping("/plum/status")
@@ -136,25 +137,14 @@ public class AdminSyncController {
     })
     public ResponseEntity<Map<String, Object>> getPlumStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("inProgress", plumImportInProgress.get());
+        status.put("inProgress", registry.isRunning("plum"));
         status.put("csvUrl", plumImportService.getPlumCsvUrl());
 
-        if (lastPlumResult != null) {
-            Map<String, Object> lastImport = new HashMap<>();
-            lastImport.put("startTime", lastPlumResult.getStartTime());
-            lastImport.put("endTime", lastPlumResult.getEndTime());
-            lastImport.put("totalRecords", lastPlumResult.getTotalRecords());
-            lastImport.put("individualsCreated", lastPlumResult.getIndividualsCreated());
-            lastImport.put("individualsUpdated", lastPlumResult.getIndividualsUpdated());
-            lastImport.put("positionsCreated", lastPlumResult.getPositionsCreated());
-            lastImport.put("positionsUpdated", lastPlumResult.getPositionsUpdated());
-            lastImport.put("holdingsCreated", lastPlumResult.getHoldingsCreated());
-            lastImport.put("holdingsUpdated", lastPlumResult.getHoldingsUpdated());
-            lastImport.put("errors", lastPlumResult.getErrors());
-            lastImport.put("durationSeconds", lastPlumResult.getDurationSeconds());
-            lastImport.put("successRate", lastPlumResult.getSuccessRate());
-            status.put("lastImport", lastImport);
-        }
+        // Find last completed plum job for backward-compatible status
+        registry.getAllJobs().stream()
+                .filter(j -> "plum".equals(j.getSyncType()) && j.getState() != SyncJobStatus.State.RUNNING)
+                .findFirst()
+                .ifPresent(j -> status.put("lastImport", j.getResult()));
 
         return ResponseEntity.ok(status);
     }
@@ -166,11 +156,12 @@ public class AdminSyncController {
         @ApiResponse(responseCode = "200", description = "Last result returned"),
         @ApiResponse(responseCode = "404", description = "No previous import found")
     })
-    public ResponseEntity<PlumImportResult> getLastPlumResult() {
-        if (lastPlumResult == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(lastPlumResult);
+    public ResponseEntity<Object> getLastPlumResult() {
+        return registry.getAllJobs().stream()
+                .filter(j -> "plum".equals(j.getSyncType()) && j.getState() == SyncJobStatus.State.COMPLETED)
+                .findFirst()
+                .map(j -> ResponseEntity.ok(j.getResult()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // =====================================================================
@@ -178,52 +169,34 @@ public class AdminSyncController {
     // =====================================================================
 
     @PostMapping("/statutes")
-    @Operation(summary = "Import all US Code titles",
-               description = "Downloads and imports all US Code titles from uscode.house.gov. " +
-                       "This is a long-running operation that may take 30+ minutes for the full dataset.")
+    @Operation(summary = "Import all US Code titles (async)",
+               description = "Starts an async import of all US Code titles from uscode.house.gov. " +
+                       "Returns immediately with a job ID. Poll GET /jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Import completed"),
-        @ApiResponse(responseCode = "409", description = "Import already in progress"),
-        @ApiResponse(responseCode = "500", description = "Import failed")
+        @ApiResponse(responseCode = "202", description = "Import started"),
+        @ApiResponse(responseCode = "409", description = "Import already in progress")
     })
-    public ResponseEntity<UsCodeImportResult> importAllStatutes(
+    public ResponseEntity<SyncJobStatus> importAllStatutes(
             @RequestParam(required = false) String releasePoint) {
-
-        if (!usCodeImportInProgress.compareAndSet(false, true)) {
-            log.warn("US Code import already in progress");
+        if (registry.isRunning("statutes")) {
             return ResponseEntity.status(409).build();
         }
 
         log.info("Full US Code import triggered via API (releasePoint: {})", releasePoint);
-
-        try {
-            UsCodeImportResult result = usCodeImportService.importAllTitles(releasePoint);
-            lastUsCodeResult = result;
-
-            if (!result.isSuccess()) {
-                log.warn("US Code import completed with errors: {}", result.getErrorMessage());
-            } else {
-                log.info("US Code import completed successfully: {} sections imported",
-                        result.getSectionsInserted() + result.getSectionsUpdated());
-            }
-
-            return ResponseEntity.ok(result);
-
-        } finally {
-            usCodeImportInProgress.set(false);
-        }
+        SyncJobStatus status = registry.startJob("statutes");
+        orchestrator.runUsCodeImportAll(status.getJobId(), releasePoint);
+        return ResponseEntity.accepted().body(status);
     }
 
     @PostMapping("/statutes/{titleNumber}")
-    @Operation(summary = "Import a specific US Code title",
-               description = "Downloads and imports a single US Code title from uscode.house.gov.")
+    @Operation(summary = "Import a specific US Code title (async)",
+               description = "Starts an async import of a single US Code title from uscode.house.gov.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Import completed"),
+        @ApiResponse(responseCode = "202", description = "Import started"),
         @ApiResponse(responseCode = "409", description = "Import already in progress"),
-        @ApiResponse(responseCode = "400", description = "Invalid title number"),
-        @ApiResponse(responseCode = "500", description = "Import failed")
+        @ApiResponse(responseCode = "400", description = "Invalid title number")
     })
-    public ResponseEntity<UsCodeImportResult> importStatuteTitle(
+    public ResponseEntity<SyncJobStatus> importStatuteTitle(
             @PathVariable int titleNumber,
             @RequestParam(required = false) String releasePoint) {
 
@@ -231,29 +204,14 @@ public class AdminSyncController {
             return ResponseEntity.badRequest().build();
         }
 
-        if (!usCodeImportInProgress.compareAndSet(false, true)) {
-            log.warn("US Code import already in progress");
+        if (registry.isRunning("statutes")) {
             return ResponseEntity.status(409).build();
         }
 
         log.info("US Code Title {} import triggered via API (releasePoint: {})", titleNumber, releasePoint);
-
-        try {
-            UsCodeImportResult result = usCodeImportService.importTitle(titleNumber, releasePoint);
-            lastUsCodeResult = result;
-
-            if (!result.isSuccess()) {
-                log.warn("US Code Title {} import failed: {}", titleNumber, result.getErrorMessage());
-            } else {
-                log.info("US Code Title {} import completed: {} inserted, {} updated",
-                        titleNumber, result.getSectionsInserted(), result.getSectionsUpdated());
-            }
-
-            return ResponseEntity.ok(result);
-
-        } finally {
-            usCodeImportInProgress.set(false);
-        }
+        SyncJobStatus status = registry.startJob("statutes");
+        orchestrator.runUsCodeImportTitle(status.getJobId(), titleNumber, releasePoint);
+        return ResponseEntity.accepted().body(status);
     }
 
     @GetMapping("/statutes/status")
@@ -264,27 +222,14 @@ public class AdminSyncController {
     })
     public ResponseEntity<Map<String, Object>> getStatutesStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("inProgress", usCodeImportInProgress.get());
+        status.put("inProgress", registry.isRunning("statutes"));
         status.put("totalStatutes", usCodeImportService.getTotalStatuteCount());
         status.put("usCodeStatutes", usCodeImportService.getUsCodeCount());
 
-        if (lastUsCodeResult != null) {
-            Map<String, Object> lastImport = new HashMap<>();
-            lastImport.put("titleNumber", lastUsCodeResult.getTitleNumber());
-            lastImport.put("releasePoint", lastUsCodeResult.getReleasePoint());
-            lastImport.put("startedAt", lastUsCodeResult.getStartedAt());
-            lastImport.put("completedAt", lastUsCodeResult.getCompletedAt());
-            lastImport.put("sectionsInserted", lastUsCodeResult.getSectionsInserted());
-            lastImport.put("sectionsUpdated", lastUsCodeResult.getSectionsUpdated());
-            lastImport.put("sectionsFailed", lastUsCodeResult.getSectionsFailed());
-            lastImport.put("totalProcessed", lastUsCodeResult.getTotalProcessed());
-            lastImport.put("success", lastUsCodeResult.isSuccess());
-            lastImport.put("duration", lastUsCodeResult.getDurationFormatted());
-            if (!lastUsCodeResult.isSuccess()) {
-                lastImport.put("errorMessage", lastUsCodeResult.getErrorMessage());
-            }
-            status.put("lastImport", lastImport);
-        }
+        registry.getAllJobs().stream()
+                .filter(j -> "statutes".equals(j.getSyncType()) && j.getState() != SyncJobStatus.State.RUNNING)
+                .findFirst()
+                .ifPresent(j -> status.put("lastImport", j.getResult()));
 
         return ResponseEntity.ok(status);
     }
@@ -296,11 +241,12 @@ public class AdminSyncController {
         @ApiResponse(responseCode = "200", description = "Last result returned"),
         @ApiResponse(responseCode = "404", description = "No previous import found")
     })
-    public ResponseEntity<UsCodeImportResult> getLastStatutesResult() {
-        if (lastUsCodeResult == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(lastUsCodeResult);
+    public ResponseEntity<Object> getLastStatutesResult() {
+        return registry.getAllJobs().stream()
+                .filter(j -> "statutes".equals(j.getSyncType()) && j.getState() == SyncJobStatus.State.COMPLETED)
+                .findFirst()
+                .map(j -> ResponseEntity.ok(j.getResult()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // =====================================================================
@@ -308,37 +254,22 @@ public class AdminSyncController {
     // =====================================================================
 
     @PostMapping("/presidencies")
-    @Operation(summary = "Sync presidential data",
-               description = "Imports all 47 U.S. presidencies from seed data including presidents, " +
-                       "vice presidents, and related position holdings. Idempotent - safe to run multiple times.")
+    @Operation(summary = "Sync presidential data (async)",
+               description = "Starts an async import of all 47 U.S. presidencies from seed data. " +
+                       "Returns immediately with a job ID. Poll GET /jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Sync completed successfully"),
-        @ApiResponse(responseCode = "409", description = "Sync already in progress"),
-        @ApiResponse(responseCode = "500", description = "Sync failed")
+        @ApiResponse(responseCode = "202", description = "Sync started"),
+        @ApiResponse(responseCode = "409", description = "Sync already in progress")
     })
-    public ResponseEntity<PresidentialSyncService.SyncResult> syncPresidencies() {
-        if (!presidentialSyncInProgress.compareAndSet(false, true)) {
-            log.warn("Presidential sync already in progress");
+    public ResponseEntity<SyncJobStatus> syncPresidencies() {
+        if (registry.isRunning("presidencies")) {
             return ResponseEntity.status(409).build();
         }
 
         log.info("Presidential sync triggered via API");
-
-        try {
-            PresidentialSyncService.SyncResult result = presidentialSyncService.syncFromSeedFile();
-            lastPresidentialResult = result;
-
-            if (result.getErrors() > 0) {
-                log.warn("Presidential sync completed with {} errors", result.getErrors());
-            } else {
-                log.info("Presidential sync completed successfully: {}", result);
-            }
-
-            return ResponseEntity.ok(result);
-
-        } finally {
-            presidentialSyncInProgress.set(false);
-        }
+        SyncJobStatus status = registry.startJob("presidencies");
+        orchestrator.runPresidentialSync(status.getJobId());
+        return ResponseEntity.accepted().body(status);
     }
 
     @GetMapping("/presidencies/status")
@@ -349,23 +280,13 @@ public class AdminSyncController {
     })
     public ResponseEntity<Map<String, Object>> getPresidenciesStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("inProgress", presidentialSyncInProgress.get());
+        status.put("inProgress", registry.isRunning("presidencies"));
         status.put("totalPresidencies", presidentialSyncService.getPresidencyCount());
 
-        if (lastPresidentialResult != null) {
-            Map<String, Object> lastSync = new HashMap<>();
-            lastSync.put("presidenciesAdded", lastPresidentialResult.getPresidenciesAdded());
-            lastSync.put("presidenciesUpdated", lastPresidentialResult.getPresidenciesUpdated());
-            lastSync.put("totalPresidencies", lastPresidentialResult.getTotalPresidencies());
-            lastSync.put("individualsAdded", lastPresidentialResult.getIndividualsAdded());
-            lastSync.put("individualsUpdated", lastPresidentialResult.getIndividualsUpdated());
-            lastSync.put("vpHoldingsAdded", lastPresidentialResult.getVpHoldingsAdded());
-            lastSync.put("errors", lastPresidentialResult.getErrors());
-            if (!lastPresidentialResult.getErrorMessages().isEmpty()) {
-                lastSync.put("errorMessages", lastPresidentialResult.getErrorMessages());
-            }
-            status.put("lastSync", lastSync);
-        }
+        registry.getAllJobs().stream()
+                .filter(j -> "presidencies".equals(j.getSyncType()) && j.getState() != SyncJobStatus.State.RUNNING)
+                .findFirst()
+                .ifPresent(j -> status.put("lastSync", j.getResult()));
 
         return ResponseEntity.ok(status);
     }
@@ -377,11 +298,12 @@ public class AdminSyncController {
         @ApiResponse(responseCode = "200", description = "Last result returned"),
         @ApiResponse(responseCode = "404", description = "No previous sync found")
     })
-    public ResponseEntity<PresidentialSyncService.SyncResult> getLastPresidenciesResult() {
-        if (lastPresidentialResult == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(lastPresidentialResult);
+    public ResponseEntity<Object> getLastPresidenciesResult() {
+        return registry.getAllJobs().stream()
+                .filter(j -> "presidencies".equals(j.getSyncType()) && j.getState() == SyncJobStatus.State.COMPLETED)
+                .findFirst()
+                .map(j -> ResponseEntity.ok(j.getResult()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // =====================================================================
@@ -389,80 +311,47 @@ public class AdminSyncController {
     // =====================================================================
 
     @PostMapping("/executive-orders")
-    @Operation(summary = "Sync all Executive Orders from Federal Register",
-               description = "Fetches Executive Order data for all presidencies from the Federal Register API. " +
-                       "Links EOs to their respective presidencies. Only modern presidents (FDR onwards) have " +
-                       "EOs available in the Federal Register database.")
+    @Operation(summary = "Sync all Executive Orders (async)",
+               description = "Starts an async fetch of Executive Order data for all presidencies. " +
+                       "Returns immediately with a job ID. Poll GET /jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Sync completed"),
-        @ApiResponse(responseCode = "409", description = "Sync already in progress"),
-        @ApiResponse(responseCode = "500", description = "Sync failed")
+        @ApiResponse(responseCode = "202", description = "Sync started"),
+        @ApiResponse(responseCode = "409", description = "Sync already in progress")
     })
-    public ResponseEntity<ExecutiveOrderSyncService.SyncResult> syncAllExecutiveOrders() {
-        if (!eoSyncInProgress.compareAndSet(false, true)) {
-            log.warn("Executive Order sync already in progress");
+    public ResponseEntity<SyncJobStatus> syncAllExecutiveOrders() {
+        if (registry.isRunning("executive-orders")) {
             return ResponseEntity.status(409).build();
         }
 
         log.info("Executive Order sync triggered via API");
-
-        try {
-            ExecutiveOrderSyncService.SyncResult result = executiveOrderSyncService.syncAllExecutiveOrders();
-            lastEoResult = result;
-
-            if (result.getErrors() > 0) {
-                log.warn("Executive Order sync completed with {} errors", result.getErrors());
-            } else {
-                log.info("Executive Order sync completed successfully: {}", result);
-            }
-
-            return ResponseEntity.ok(result);
-
-        } finally {
-            eoSyncInProgress.set(false);
-        }
+        SyncJobStatus status = registry.startJob("executive-orders");
+        orchestrator.runExecutiveOrderSync(status.getJobId());
+        return ResponseEntity.accepted().body(status);
     }
 
     @PostMapping("/executive-orders/{presidencyNumber}")
-    @Operation(summary = "Sync Executive Orders for a specific presidency",
-               description = "Fetches Executive Order data for a specific presidency from the Federal Register API.")
+    @Operation(summary = "Sync Executive Orders for a specific presidency (async)",
+               description = "Starts an async fetch of EO data for a specific presidency.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Sync completed"),
+        @ApiResponse(responseCode = "202", description = "Sync started"),
         @ApiResponse(responseCode = "409", description = "Sync already in progress"),
-        @ApiResponse(responseCode = "400", description = "Invalid presidency number"),
-        @ApiResponse(responseCode = "500", description = "Sync failed")
+        @ApiResponse(responseCode = "400", description = "Invalid presidency number")
     })
-    public ResponseEntity<ExecutiveOrderSyncService.SyncResult> syncExecutiveOrdersForPresidency(
+    public ResponseEntity<SyncJobStatus> syncExecutiveOrdersForPresidency(
             @PathVariable int presidencyNumber) {
 
         if (presidencyNumber < 1 || presidencyNumber > 47) {
             return ResponseEntity.badRequest().build();
         }
 
-        if (!eoSyncInProgress.compareAndSet(false, true)) {
-            log.warn("Executive Order sync already in progress");
+        if (registry.isRunning("executive-orders")) {
             return ResponseEntity.status(409).build();
         }
 
         log.info("Executive Order sync for presidency #{} triggered via API", presidencyNumber);
-
-        try {
-            ExecutiveOrderSyncService.SyncResult result =
-                    executiveOrderSyncService.syncExecutiveOrdersForPresidency(presidencyNumber);
-            lastEoResult = result;
-
-            if (result.getErrors() > 0) {
-                log.warn("Executive Order sync for presidency #{} completed with {} errors",
-                        presidencyNumber, result.getErrors());
-            } else {
-                log.info("Executive Order sync for presidency #{} completed: {}", presidencyNumber, result);
-            }
-
-            return ResponseEntity.ok(result);
-
-        } finally {
-            eoSyncInProgress.set(false);
-        }
+        SyncJobStatus status = registry.startJob("executive-orders");
+        orchestrator.runExecutiveOrderSyncForPresidency(status.getJobId(), presidencyNumber);
+        return ResponseEntity.accepted().body(status);
     }
 
     @GetMapping("/executive-orders/status")
@@ -473,22 +362,13 @@ public class AdminSyncController {
     })
     public ResponseEntity<Map<String, Object>> getExecutiveOrdersStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("inProgress", eoSyncInProgress.get());
+        status.put("inProgress", registry.isRunning("executive-orders"));
         status.put("eoCounts", executiveOrderSyncService.getExecutiveOrderCounts());
 
-        if (lastEoResult != null) {
-            Map<String, Object> lastSync = new HashMap<>();
-            lastSync.put("executiveOrdersAdded", lastEoResult.getExecutiveOrdersAdded());
-            lastSync.put("executiveOrdersUpdated", lastEoResult.getExecutiveOrdersUpdated());
-            lastSync.put("executiveOrdersSkipped", lastEoResult.getExecutiveOrdersSkipped());
-            lastSync.put("totalExecutiveOrders", lastEoResult.getTotalExecutiveOrders());
-            lastSync.put("presidenciesProcessed", lastEoResult.getPresidenciesProcessed());
-            lastSync.put("errors", lastEoResult.getErrors());
-            if (!lastEoResult.getErrorMessages().isEmpty()) {
-                lastSync.put("errorMessages", lastEoResult.getErrorMessages());
-            }
-            status.put("lastSync", lastSync);
-        }
+        registry.getAllJobs().stream()
+                .filter(j -> "executive-orders".equals(j.getSyncType()) && j.getState() != SyncJobStatus.State.RUNNING)
+                .findFirst()
+                .ifPresent(j -> status.put("lastSync", j.getResult()));
 
         return ResponseEntity.ok(status);
     }
@@ -500,11 +380,12 @@ public class AdminSyncController {
         @ApiResponse(responseCode = "200", description = "Last result returned"),
         @ApiResponse(responseCode = "404", description = "No previous sync found")
     })
-    public ResponseEntity<ExecutiveOrderSyncService.SyncResult> getLastExecutiveOrdersResult() {
-        if (lastEoResult == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(lastEoResult);
+    public ResponseEntity<Object> getLastExecutiveOrdersResult() {
+        return registry.getAllJobs().stream()
+                .filter(j -> "executive-orders".equals(j.getSyncType()) && j.getState() == SyncJobStatus.State.COMPLETED)
+                .findFirst()
+                .map(j -> ResponseEntity.ok(j.getResult()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // =====================================================================
@@ -523,22 +404,22 @@ public class AdminSyncController {
         Map<String, Object> services = new HashMap<>();
         services.put("plumImport", Map.of(
                 "available", true,
-                "inProgress", plumImportInProgress.get(),
+                "inProgress", registry.isRunning("plum"),
                 "csvUrl", plumImportService.getPlumCsvUrl()
         ));
         services.put("usCodeImport", Map.of(
                 "available", true,
-                "inProgress", usCodeImportInProgress.get(),
+                "inProgress", registry.isRunning("statutes"),
                 "totalStatutes", usCodeImportService.getTotalStatuteCount()
         ));
         services.put("presidentialSync", Map.of(
                 "available", true,
-                "inProgress", presidentialSyncInProgress.get(),
+                "inProgress", registry.isRunning("presidencies"),
                 "totalPresidencies", presidentialSyncService.getPresidencyCount()
         ));
         services.put("executiveOrderSync", Map.of(
                 "available", true,
-                "inProgress", eoSyncInProgress.get()
+                "inProgress", registry.isRunning("executive-orders")
         ));
 
         // Scheduled sync health

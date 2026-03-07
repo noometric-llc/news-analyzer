@@ -16,6 +16,7 @@ import type {
 } from '@/types/member';
 import type { CommitteeMembership } from '@/types/committee';
 import type { Page, PaginationParams } from '@/types/pagination';
+import type { SyncJobStatus } from '@/types/sync';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
@@ -153,21 +154,23 @@ export const membersApi = {
   },
 
   /**
-   * Trigger member sync from Congress.gov
-   * POST /api/members/sync
+   * Trigger member sync from Congress.gov (async — returns job status)
+   * POST /api/members/sync → 202 Accepted
    */
-  triggerSync: async (): Promise<void> => {
-    await api.post('/api/members/sync');
+  triggerSync: async (): Promise<SyncJobStatus> => {
+    const response = await api.post<SyncJobStatus>('/api/members/sync');
+    return response.data;
   },
 
   /**
-   * Trigger enrichment sync from legislators repo
-   * POST /api/members/enrichment-sync
+   * Trigger enrichment sync from legislators repo (async — returns job status)
+   * POST /api/members/enrichment-sync → 202 Accepted
    */
-  triggerEnrichmentSync: async (force: boolean = false): Promise<void> => {
-    await api.post('/api/members/enrichment-sync', null, {
+  triggerEnrichmentSync: async (force: boolean = false): Promise<SyncJobStatus> => {
+    const response = await api.post<SyncJobStatus>('/api/members/enrichment-sync', null, {
       params: { force },
     });
+    return response.data;
   },
 
   /**

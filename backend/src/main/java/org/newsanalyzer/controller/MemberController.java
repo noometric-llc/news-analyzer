@@ -11,11 +11,14 @@ import org.newsanalyzer.model.CommitteeMembership;
 import org.newsanalyzer.model.CongressionalMember;
 import org.newsanalyzer.model.CongressionalMember.Chamber;
 import org.newsanalyzer.model.PositionHolding;
+import org.newsanalyzer.dto.SyncJobStatus;
 import org.newsanalyzer.service.CommitteeService;
 import org.newsanalyzer.service.MemberService;
 import org.newsanalyzer.service.MemberSyncService;
 import org.newsanalyzer.service.LegislatorsEnrichmentService;
 import org.newsanalyzer.service.TermSyncService;
+import org.newsanalyzer.service.SyncJobRegistry;
+import org.newsanalyzer.service.SyncOrchestrator;
 import org.newsanalyzer.scheduler.EnrichmentScheduler;
 import org.newsanalyzer.repository.CongressionalMemberRepository;
 import org.newsanalyzer.repository.PositionHoldingRepository;
@@ -64,6 +67,8 @@ public class MemberController {
     private final TermSyncService termSyncService;
     private final PositionHoldingRepository positionHoldingRepository;
     private final CongressionalMemberRepository congressionalMemberRepository;
+    private final SyncJobRegistry registry;
+    private final SyncOrchestrator orchestrator;
 
     public MemberController(MemberService memberService,
                            MemberSyncService memberSyncService,
@@ -71,7 +76,9 @@ public class MemberController {
                            EnrichmentScheduler enrichmentScheduler,
                            TermSyncService termSyncService,
                            PositionHoldingRepository positionHoldingRepository,
-                           CongressionalMemberRepository congressionalMemberRepository) {
+                           CongressionalMemberRepository congressionalMemberRepository,
+                           SyncJobRegistry registry,
+                           SyncOrchestrator orchestrator) {
         this.memberService = memberService;
         this.memberSyncService = memberSyncService;
         this.committeeService = committeeService;
@@ -79,6 +86,8 @@ public class MemberController {
         this.termSyncService = termSyncService;
         this.positionHoldingRepository = positionHoldingRepository;
         this.congressionalMemberRepository = congressionalMemberRepository;
+        this.registry = registry;
+        this.orchestrator = orchestrator;
     }
 
     // =====================================================================
@@ -347,31 +356,41 @@ public class MemberController {
     // =====================================================================
 
     @PostMapping("/sync")
-    @Operation(summary = "Trigger member sync",
-               description = "Trigger a full sync of all current members from Congress.gov API (admin only)")
+    @Operation(summary = "Trigger member sync (async)",
+               description = "Starts an async sync of all current members from Congress.gov API. " +
+                       "Returns immediately with a job ID. Poll GET /api/admin/sync/jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Sync completed"),
-        @ApiResponse(responseCode = "500", description = "Sync failed")
+        @ApiResponse(responseCode = "202", description = "Sync started"),
+        @ApiResponse(responseCode = "409", description = "Sync already in progress")
     })
-    public ResponseEntity<MemberSyncService.SyncResult> triggerSync() {
-        log.info("Manual sync triggered via API");
-        MemberSyncService.SyncResult result = memberSyncService.syncAllCurrentMembers();
-        return ResponseEntity.ok(result);
+    public ResponseEntity<SyncJobStatus> triggerSync() {
+        if (registry.isRunning("members")) {
+            return ResponseEntity.status(409).build();
+        }
+        log.info("Manual member sync triggered via API");
+        SyncJobStatus status = registry.startJob("members");
+        orchestrator.runMemberSync(status.getJobId());
+        return ResponseEntity.accepted().body(status);
     }
 
     @PostMapping("/enrichment-sync")
-    @Operation(summary = "Trigger enrichment sync",
-               description = "Trigger sync from unitedstates/congress-legislators GitHub repo (admin only)")
+    @Operation(summary = "Trigger enrichment sync (async)",
+               description = "Starts an async sync from unitedstates/congress-legislators GitHub repo. " +
+                       "Returns immediately with a job ID. Poll GET /api/admin/sync/jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Enrichment sync completed"),
-        @ApiResponse(responseCode = "500", description = "Enrichment sync failed")
+        @ApiResponse(responseCode = "202", description = "Enrichment sync started"),
+        @ApiResponse(responseCode = "409", description = "Enrichment sync already in progress")
     })
-    public ResponseEntity<LegislatorsEnrichmentService.SyncResult> triggerEnrichmentSync(
+    public ResponseEntity<SyncJobStatus> triggerEnrichmentSync(
             @Parameter(description = "Force sync even if commit unchanged")
             @RequestParam(defaultValue = "false") boolean force) {
+        if (registry.isRunning("enrichment")) {
+            return ResponseEntity.status(409).build();
+        }
         log.info("Manual enrichment sync triggered via API (force={})", force);
-        LegislatorsEnrichmentService.SyncResult result = enrichmentScheduler.triggerManualSync(force);
-        return ResponseEntity.ok(result);
+        SyncJobStatus status = registry.startJob("enrichment");
+        orchestrator.runEnrichmentSync(status.getJobId(), force);
+        return ResponseEntity.accepted().body(status);
     }
 
     @GetMapping("/enrichment-status")
@@ -382,15 +401,20 @@ public class MemberController {
     }
 
     @PostMapping("/sync-terms")
-    @Operation(summary = "Trigger term history sync",
-               description = "Sync term history for all members from Congress.gov API (admin only)")
+    @Operation(summary = "Trigger term history sync (async)",
+               description = "Starts an async sync of term history for all members from Congress.gov API. " +
+                       "Returns immediately with a job ID. Poll GET /api/admin/sync/jobs/{jobId} for progress.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Term sync completed"),
-        @ApiResponse(responseCode = "500", description = "Term sync failed")
+        @ApiResponse(responseCode = "202", description = "Term sync started"),
+        @ApiResponse(responseCode = "409", description = "Term sync already in progress")
     })
-    public ResponseEntity<TermSyncService.SyncResult> triggerTermSync() {
+    public ResponseEntity<SyncJobStatus> triggerTermSync() {
+        if (registry.isRunning("terms")) {
+            return ResponseEntity.status(409).build();
+        }
         log.info("Manual term sync triggered via API");
-        TermSyncService.SyncResult result = termSyncService.syncAllCurrentMemberTerms();
-        return ResponseEntity.ok(result);
+        SyncJobStatus status = registry.startJob("terms");
+        orchestrator.runTermSync(status.getJobId());
+        return ResponseEntity.accepted().body(status);
     }
 }

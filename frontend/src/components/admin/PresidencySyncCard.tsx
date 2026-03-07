@@ -33,24 +33,13 @@ export function PresidencySyncCard() {
 
   const handleSync = async () => {
     try {
-      const result = await syncMutation.mutateAsync();
-
-      const totalPresidencies = result.presidenciesAdded + result.presidenciesUpdated;
-      const totalPersons = result.personsAdded + result.personsUpdated;
+      await syncMutation.mutateAsync();
 
       toast({
-        title: 'Presidential Sync Complete',
-        description: `Imported ${totalPresidencies} presidencies, ${totalPersons} persons, ${result.vpHoldingsAdded} VP holdings`,
+        title: 'Presidential Sync Started',
+        description: 'Sync is running in the background. Status will update automatically.',
         variant: 'success',
       });
-
-      if (result.errors > 0) {
-        toast({
-          title: 'Sync Warnings',
-          description: `${result.errors} records had errors. Check admin logs for details.`,
-          variant: 'default',
-        });
-      }
 
       setDialogOpen(false);
     } catch (err) {

@@ -33,27 +33,13 @@ export function PlumSyncCard() {
 
   const handleSync = async () => {
     try {
-      const result = await syncMutation.mutateAsync();
-
-      const summary = [
-        `${result.personsCreated + result.personsUpdated} persons`,
-        `${result.positionsCreated + result.positionsUpdated} positions`,
-        `${result.holdingsCreated + result.holdingsUpdated} holdings`,
-      ].join(', ');
+      await syncMutation.mutateAsync();
 
       toast({
-        title: 'PLUM Sync Complete',
-        description: `Processed ${result.totalRecords.toLocaleString()} records: ${summary}`,
+        title: 'PLUM Sync Started',
+        description: 'Import is running in the background. Status will update automatically.',
         variant: 'success',
       });
-
-      if (result.errors > 0) {
-        toast({
-          title: 'Import Warnings',
-          description: `${result.errors} records had errors. Check admin logs for details.`,
-          variant: 'default',
-        });
-      }
 
       setDialogOpen(false);
     } catch (err) {

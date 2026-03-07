@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PlumSyncStatus, PlumImportResult } from '@/types/plum';
+import type { SyncJobStatus } from '@/types/sync';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -44,9 +45,9 @@ async function fetchPlumLastResult(): Promise<PlumImportResult | null> {
 }
 
 /**
- * Trigger PLUM sync from OPM CSV
+ * Trigger PLUM sync from OPM CSV (async — returns job status)
  */
-async function triggerPlumSync(): Promise<PlumImportResult> {
+async function triggerPlumSync(): Promise<SyncJobStatus> {
   const response = await fetch(`${API_BASE}/api/admin/sync/plum`, {
     method: 'POST',
   });
@@ -90,6 +91,8 @@ export function usePlumLastResult() {
 
 /**
  * Hook to trigger PLUM sync (admin only)
+ * Returns SyncJobStatus with jobId. The existing status polling
+ * (usePlumSyncStatus with refetchInterval) handles progress tracking.
  */
 export function usePlumSync() {
   const queryClient = useQueryClient();
@@ -97,9 +100,8 @@ export function usePlumSync() {
   return useMutation({
     mutationFn: triggerPlumSync,
     onSuccess: () => {
-      // Invalidate sync status to refresh
+      // Immediately refetch sync status so polling picks up the running state
       queryClient.invalidateQueries({ queryKey: plumKeys.syncStatus() });
-      queryClient.invalidateQueries({ queryKey: plumKeys.lastResult() });
     },
   });
 }

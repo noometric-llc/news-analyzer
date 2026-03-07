@@ -8,11 +8,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Page } from '@/types/pagination';
 import type {
   GovOrgSyncStatus,
-  GovOrgSyncResult,
   CsvImportResult,
   GovernmentOrganization,
   GovernmentBranch,
 } from '@/types/government-org';
+import type { SyncJobStatus } from '@/types/sync';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -283,13 +283,16 @@ async function fetchGovOrgSyncStatus(): Promise<GovOrgSyncStatus> {
 }
 
 /**
- * Trigger government organization sync from Federal Register API
+ * Trigger government organization sync from Federal Register API (async — returns job status)
  */
-async function triggerGovOrgSync(): Promise<GovOrgSyncResult> {
+async function triggerGovOrgSync(): Promise<SyncJobStatus> {
   const response = await fetch(`${API_BASE}/api/government-organizations/sync/federal-register`, {
     method: 'POST',
   });
   if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error('Government organization sync already in progress');
+    }
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.errorMessages?.[0] || 'Government organization sync failed');
   }
@@ -310,18 +313,12 @@ export function useGovernmentOrgSyncStatus() {
 
 /**
  * Hook to trigger government organization sync (admin only)
+ * Returns SyncJobStatus with jobId for polling via useSyncJob.
+ * Query invalidation is handled by SyncButton on job completion.
  */
 export function useGovernmentOrgSync() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: triggerGovOrgSync,
-    onSuccess: () => {
-      // Invalidate sync status to refresh counts
-      queryClient.invalidateQueries({ queryKey: govOrgKeys.syncStatus() });
-      // Also invalidate any government organization list queries
-      queryClient.invalidateQueries({ queryKey: govOrgKeys.all });
-    },
   });
 }
 

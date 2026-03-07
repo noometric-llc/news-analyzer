@@ -3,10 +3,11 @@
 /**
  * Sync Button Component
  *
- * Button with confirmation dialog for triggering data synchronization.
+ * Button with confirmation dialog for triggering async data synchronization.
+ * POST fires async (returns 202 + jobId), then polls for completion via useSyncJob.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,9 +20,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useMemberSync, useEnrichmentSync } from '@/hooks/useMembers';
-import { useCommitteeSync, useMembershipSync } from '@/hooks/useCommittees';
-import { useGovernmentOrgSync } from '@/hooks/useGovernmentOrgs';
+import { useQueryClient } from '@tanstack/react-query';
+import { useMemberSync, useEnrichmentSync, memberKeys } from '@/hooks/useMembers';
+import { useCommitteeSync, useMembershipSync, committeeKeys } from '@/hooks/useCommittees';
+import { useGovernmentOrgSync, govOrgKeys } from '@/hooks/useGovernmentOrgs';
+import { useSyncJob } from '@/hooks/useSyncJob';
+import type { SyncJobStatus } from '@/types/sync';
 
 type SyncType = 'members' | 'committees' | 'memberships' | 'enrichment' | 'gov-orgs';
 
@@ -32,9 +36,20 @@ interface SyncButtonProps {
   warning: string;
 }
 
+/** Map sync types to the query keys that should be invalidated on completion */
+const invalidationKeys: Record<SyncType, readonly string[]> = {
+  'members': memberKeys.all,
+  'committees': committeeKeys.all,
+  'memberships': committeeKeys.all,
+  'enrichment': memberKeys.all,
+  'gov-orgs': govOrgKeys.all,
+};
+
 export function SyncButton({ type, title, description, warning }: SyncButtonProps) {
   const [open, setOpen] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const memberSync = useMemberSync();
   const committeeSync = useCommitteeSync();
@@ -42,63 +57,75 @@ export function SyncButton({ type, title, description, warning }: SyncButtonProp
   const enrichmentSync = useEnrichmentSync();
   const govOrgSync = useGovernmentOrgSync();
 
-  const getMutation = () => {
-    switch (type) {
-      case 'members':
-        return memberSync;
-      case 'committees':
-        return committeeSync;
-      case 'memberships':
-        return membershipSync;
-      case 'enrichment':
-        return enrichmentSync;
-      case 'gov-orgs':
-        return govOrgSync;
-    }
-  };
+  // Poll for job status while a sync is active
+  const { data: job } = useSyncJob(activeJobId);
 
-  const mutation = getMutation();
-  const isLoading = mutation.isPending;
+  const isMutating = memberSync.isPending || committeeSync.isPending ||
+    membershipSync.isPending || enrichmentSync.isPending || govOrgSync.isPending;
+  const isRunning = !!activeJobId && job?.state === 'RUNNING';
+  const isLoading = isMutating || isRunning;
+
+  // Watch job state for completion/failure
+  useEffect(() => {
+    if (!job || !activeJobId) return;
+
+    if (job.state === 'COMPLETED') {
+      toast({
+        title: 'Sync completed',
+        description: `${title} sync finished successfully.`,
+        variant: 'success',
+      });
+      // Invalidate relevant queries so UI refreshes with new data
+      queryClient.invalidateQueries({ queryKey: [...invalidationKeys[type]] });
+      if (type === 'gov-orgs') {
+        queryClient.invalidateQueries({ queryKey: govOrgKeys.syncStatus() });
+      }
+      setActiveJobId(null);
+    } else if (job.state === 'FAILED') {
+      toast({
+        title: 'Sync failed',
+        description: job.errorMessage || `${title} sync encountered an error.`,
+        variant: 'destructive',
+      });
+      setActiveJobId(null);
+    }
+  }, [job?.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSync = async () => {
     try {
-      let resultMessage = `${title} sync has been initiated. Data will update shortly.`;
+      let result: SyncJobStatus;
 
       switch (type) {
         case 'members':
-          await memberSync.mutateAsync();
+          result = await memberSync.mutateAsync();
           break;
         case 'committees':
-          await committeeSync.mutateAsync();
+          result = await committeeSync.mutateAsync();
           break;
         case 'memberships':
-          // Default to 118th Congress
-          await membershipSync.mutateAsync(118);
+          result = await membershipSync.mutateAsync(118);
           break;
         case 'enrichment':
-          // Default to non-forced enrichment
-          await enrichmentSync.mutateAsync(false);
+          result = await enrichmentSync.mutateAsync(false);
           break;
-        case 'gov-orgs': {
-          const result = await govOrgSync.mutateAsync();
-          resultMessage = `Sync complete: ${result.added} added, ${result.updated} updated, ${result.skipped} skipped`;
-          if (result.errors > 0) {
-            resultMessage += `, ${result.errors} errors`;
-          }
+        case 'gov-orgs':
+          result = await govOrgSync.mutateAsync();
           break;
-        }
       }
 
+      // Store the job ID to start polling
+      setActiveJobId(result.jobId);
+
       toast({
-        title: 'Sync triggered successfully',
-        description: resultMessage,
+        title: 'Sync started',
+        description: `${title} sync has been initiated. You can close this dialog.`,
         variant: 'success',
       });
       setOpen(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: 'Sync failed',
+        title: 'Sync failed to start',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -110,7 +137,7 @@ export function SyncButton({ type, title, description, warning }: SyncButtonProp
       <DialogTrigger asChild>
         <Button variant="outline" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {title}
+          {isRunning ? `${title} (running...)` : title}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -134,7 +161,7 @@ export function SyncButton({ type, title, description, warning }: SyncButtonProp
             Cancel
           </Button>
           <Button onClick={handleSync} disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isMutating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirm Sync
           </Button>
         </DialogFooter>

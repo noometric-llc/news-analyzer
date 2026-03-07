@@ -11,6 +11,7 @@ import type {
   CommitteeChamber,
 } from '@/types/committee';
 import type { Page, PaginationParams } from '@/types/pagination';
+import type { SyncJobStatus } from '@/types/sync';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
@@ -118,20 +119,22 @@ export const committeesApi = {
   },
 
   /**
-   * Trigger committee sync from Congress.gov
-   * POST /api/committees/sync
+   * Trigger committee sync from Congress.gov (async — returns job status)
+   * POST /api/committees/sync → 202 Accepted
    */
-  triggerSync: async (): Promise<void> => {
-    await api.post('/api/committees/sync');
+  triggerSync: async (): Promise<SyncJobStatus> => {
+    const response = await api.post<SyncJobStatus>('/api/committees/sync');
+    return response.data;
   },
 
   /**
-   * Trigger committee membership sync
-   * POST /api/committees/sync/memberships
+   * Trigger committee membership sync (async — returns job status)
+   * POST /api/committees/sync/memberships → 202 Accepted
    */
-  triggerMembershipSync: async (congress?: number): Promise<void> => {
-    await api.post('/api/committees/sync/memberships', null, {
+  triggerMembershipSync: async (congress?: number): Promise<SyncJobStatus> => {
+    const response = await api.post<SyncJobStatus>('/api/committees/sync/memberships', null, {
       params: congress ? { congress } : undefined,
     });
+    return response.data;
   },
 };

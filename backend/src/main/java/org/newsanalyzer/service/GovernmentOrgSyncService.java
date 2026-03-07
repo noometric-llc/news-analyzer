@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Service for synchronizing government organization data from Federal Register API.
@@ -32,6 +33,8 @@ public class GovernmentOrgSyncService {
     private static final Logger log = LoggerFactory.getLogger(GovernmentOrgSyncService.class);
 
     private static final int ACRONYM_MAX_LENGTH = 50;
+
+    private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
 
     private final FederalRegisterClient federalRegisterClient;
     private final GovernmentOrganizationRepository repository;
@@ -119,94 +122,104 @@ public class GovernmentOrgSyncService {
     public SyncResult syncFromFederalRegister() {
         SyncResult result = new SyncResult();
 
-        log.info("Starting sync from Federal Register API");
-        LocalDateTime syncStartTime = LocalDateTime.now();
-
-        List<FederalRegisterAgency> agencies = federalRegisterClient.fetchAllAgencies();
-
-        if (agencies.isEmpty()) {
-            log.warn("No agencies returned from Federal Register API");
-            result.addError("No agencies returned from Federal Register API");
+        if (!syncInProgress.compareAndSet(false, true)) {
+            log.warn("Government org sync already in progress, skipping duplicate request");
+            result.addError("Sync already in progress");
             return result;
         }
 
-        log.info("Fetched {} agencies from Federal Register, beginning sync", agencies.size());
+        try {
+            log.info("Starting sync from Federal Register API");
+            LocalDateTime syncStartTime = LocalDateTime.now();
 
-        // Build a map of Federal Register ID to agency for parent linking
-        Map<Integer, FederalRegisterAgency> agencyMap = new HashMap<>();
-        Map<Integer, UUID> frIdToDbId = new HashMap<>();
+            List<FederalRegisterAgency> agencies = federalRegisterClient.fetchAllAgencies();
 
-        for (FederalRegisterAgency agency : agencies) {
-            agencyMap.put(agency.getId(), agency);
-        }
-
-        // First pass: sync all agencies
-        boolean addLimitReached = false;
-        for (FederalRegisterAgency agency : agencies) {
-            try {
-                SyncAction action = syncAgency(agency, result.getAdded() >= maxNewOrgs);
-                switch (action.type) {
-                    case ADDED:
-                        result.setAdded(result.getAdded() + 1);
-                        log.debug("Added new organization: {}", agency.getName());
-                        if (result.getAdded() >= maxNewOrgs && !addLimitReached) {
-                            addLimitReached = true;
-                            log.info("Reached max-new-orgs limit ({}). Remaining unmatched agencies will be skipped.", maxNewOrgs);
-                        }
-                        break;
-                    case UPDATED:
-                        result.setUpdated(result.getUpdated() + 1);
-                        log.debug("Updated organization: {}", agency.getName());
-                        break;
-                    case SKIPPED:
-                        result.setSkipped(result.getSkipped() + 1);
-                        log.debug("Skipped organization: {}", agency.getName());
-                        break;
-                }
-                if (action.orgId != null && agency.getId() != null) {
-                    frIdToDbId.put(agency.getId(), action.orgId);
-                }
-            } catch (Exception e) {
-                result.addError(String.format("Failed to sync '%s': %s", agency.getName(), e.getMessage()));
-                log.error("Failed to sync agency '{}': {}", agency.getName(), e.getMessage());
+            if (agencies.isEmpty()) {
+                log.warn("No agencies returned from Federal Register API");
+                result.addError("No agencies returned from Federal Register API");
+                return result;
             }
-        }
 
-        // Second pass: link parent organizations using Federal Register parent_id
-        int parentLinked = 0;
-        for (FederalRegisterAgency agency : agencies) {
-            if (agency.getParentId() != null) {
-                UUID childDbId = frIdToDbId.get(agency.getId());
-                UUID parentDbId = frIdToDbId.get(agency.getParentId());
+            log.info("Fetched {} agencies from Federal Register, beginning sync", agencies.size());
 
-                if (childDbId != null && parentDbId != null) {
-                    try {
-                        Optional<GovernmentOrganization> childOpt = repository.findById(childDbId);
-                        if (childOpt.isPresent()) {
-                            GovernmentOrganization child = childOpt.get();
-                            // Only set parent if not already manually set
-                            if (child.getParentId() == null) {
-                                child.setParentId(parentDbId);
-                                child.setOrgLevel(2); // Sub-agency
-                                repository.save(child);
-                                parentLinked++;
+            // Build a map of Federal Register ID to agency for parent linking
+            Map<Integer, FederalRegisterAgency> agencyMap = new HashMap<>();
+            Map<Integer, UUID> frIdToDbId = new HashMap<>();
+
+            for (FederalRegisterAgency agency : agencies) {
+                agencyMap.put(agency.getId(), agency);
+            }
+
+            // First pass: sync all agencies
+            boolean addLimitReached = false;
+            for (FederalRegisterAgency agency : agencies) {
+                try {
+                    SyncAction action = syncAgency(agency, result.getAdded() >= maxNewOrgs);
+                    switch (action.type) {
+                        case ADDED:
+                            result.setAdded(result.getAdded() + 1);
+                            log.debug("Added new organization: {}", agency.getName());
+                            if (result.getAdded() >= maxNewOrgs && !addLimitReached) {
+                                addLimitReached = true;
+                                log.info("Reached max-new-orgs limit ({}). Remaining unmatched agencies will be skipped.", maxNewOrgs);
                             }
+                            break;
+                        case UPDATED:
+                            result.setUpdated(result.getUpdated() + 1);
+                            log.debug("Updated organization: {}", agency.getName());
+                            break;
+                        case SKIPPED:
+                            result.setSkipped(result.getSkipped() + 1);
+                            log.debug("Skipped organization: {}", agency.getName());
+                            break;
+                    }
+                    if (action.orgId != null && agency.getId() != null) {
+                        frIdToDbId.put(agency.getId(), action.orgId);
+                    }
+                } catch (Exception e) {
+                    result.addError(String.format("Failed to sync '%s': %s", agency.getName(), e.getMessage()));
+                    log.error("Failed to sync agency '{}': {}", agency.getName(), e.getMessage());
+                }
+            }
+
+            // Second pass: link parent organizations using Federal Register parent_id
+            int parentLinked = 0;
+            for (FederalRegisterAgency agency : agencies) {
+                if (agency.getParentId() != null) {
+                    UUID childDbId = frIdToDbId.get(agency.getId());
+                    UUID parentDbId = frIdToDbId.get(agency.getParentId());
+
+                    if (childDbId != null && parentDbId != null) {
+                        try {
+                            Optional<GovernmentOrganization> childOpt = repository.findById(childDbId);
+                            if (childOpt.isPresent()) {
+                                GovernmentOrganization child = childOpt.get();
+                                // Only set parent if not already manually set
+                                if (child.getParentId() == null) {
+                                    child.setParentId(parentDbId);
+                                    child.setOrgLevel(2); // Sub-agency
+                                    repository.save(child);
+                                    parentLinked++;
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.warn("Failed to link parent for '{}': {}", agency.getName(), e.getMessage());
                         }
-                    } catch (Exception e) {
-                        log.warn("Failed to link parent for '{}': {}", agency.getName(), e.getMessage());
                     }
                 }
             }
+
+            if (parentLinked > 0) {
+                log.info("Linked {} organizations to their parent organizations", parentLinked);
+            }
+
+            lastSyncTime = syncStartTime;
+            log.info("Sync completed: {}", result);
+
+            return result;
+        } finally {
+            syncInProgress.set(false);
         }
-
-        if (parentLinked > 0) {
-            log.info("Linked {} organizations to their parent organizations", parentLinked);
-        }
-
-        lastSyncTime = syncStartTime;
-        log.info("Sync completed: {}", result);
-
-        return result;
     }
 
     /**
