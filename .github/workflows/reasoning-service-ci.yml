@@ -10,6 +10,7 @@ on:
     branches: [ master, main ]
     paths:
       - 'reasoning-service/**'
+  workflow_dispatch:
 
 jobs:
   test:
