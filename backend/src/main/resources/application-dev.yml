@@ -13,7 +13,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none  # Flyway handles schema entirely
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -89,5 +89,5 @@ logging:
   level:
     org.newsanalyzer: DEBUG
     org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
