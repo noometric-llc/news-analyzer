@@ -222,9 +222,9 @@ class OWLReasoner:
 
         try:
             results = self.graph.query(query)
-            for row in results:  # type: ignore[union-attr]
+            for row in results:
                 errors.append(
-                    f"Legislator {row.entity} is affiliated with {row.count} parties (max 1 allowed)"
+                    f"Legislator {row.entity} is affiliated with {row.count} parties (max 1 allowed)"  # type: ignore[union-attr]
                 )
         except Exception as e:
             logger.error(f"Consistency check failed: {e}")
@@ -344,8 +344,9 @@ class OWLReasoner:
         """
         try:
             results = self.graph.query(sparql_query)
+            variables = results.vars or []
             return [
-                {str(var): str(row[var]) for var in results.vars}  # type: ignore[index]
+                {str(var): str(row[var]) for var in variables}  # type: ignore[index]
                 for row in results
             ]
         except Exception as e:

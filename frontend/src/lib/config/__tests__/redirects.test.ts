@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 // Import the redirect configuration by requiring next.config.js
 // Note: This is a simplified validation - actual redirect behavior
 // is tested by Next.js at runtime
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const nextConfig = require('../../../../next.config.js');
 
 describe('Next.js Redirects Configuration', () => {

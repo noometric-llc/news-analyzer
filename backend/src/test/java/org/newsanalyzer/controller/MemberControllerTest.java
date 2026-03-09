@@ -17,6 +17,7 @@ import org.newsanalyzer.service.CommitteeService;
 import org.newsanalyzer.service.MemberService;
 import org.newsanalyzer.service.MemberSyncService;
 import org.newsanalyzer.service.SyncJobRegistry;
+import org.newsanalyzer.service.SyncOrchestrator;
 import org.newsanalyzer.service.TermSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -83,6 +84,9 @@ class MemberControllerTest {
 
     @MockBean
     private SyncJobRegistry syncJobRegistry;
+
+    @MockBean
+    private SyncOrchestrator syncOrchestrator;
 
     private CongressionalMember testMember;
     private Individual testIndividual;
