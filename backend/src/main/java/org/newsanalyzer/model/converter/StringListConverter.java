@@ -28,7 +28,8 @@ public class StringListConverter implements AttributeConverter<List<String>, Obj
     @Override
     public Object convertToDatabaseColumn(List<String> attribute) {
         if (attribute == null || attribute.isEmpty()) {
-            return null;
+            // Return empty PostgreSQL array literal — will be cast via ?::text[]
+            return "{}";
         }
         // Return PostgreSQL array literal format: {value1,"value with comma",value3}
         // The @ColumnTransformer(write = "?::text[]") on the entity field will cast
