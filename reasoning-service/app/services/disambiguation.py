@@ -216,14 +216,18 @@ class DisambiguationService:
         # All caps, 2-6 letters
         return text.isupper() and 2 <= len(text) <= 6 and text.isalpha()
 
+    # Minor words to skip when building acronym initials
+    _ACRONYM_SKIP_WORDS = {"of", "the", "and", "for", "in", "on", "at", "to", "by", "a", "an"}
+
     def _matches_acronym(self, acronym: str, full_name: str) -> bool:
         """Check if acronym matches full name"""
         acronym = acronym.upper()
         words = full_name.split()
 
-        # Simple first-letter matching
-        if len(words) >= len(acronym):
-            initials = "".join(w[0].upper() for w in words if w)
+        # First-letter matching, skipping minor words (of, the, and, etc.)
+        significant_words = [w for w in words if w.lower() not in self._ACRONYM_SKIP_WORDS]
+        if len(significant_words) >= len(acronym):
+            initials = "".join(w[0].upper() for w in significant_words if w)
             if acronym in initials:
                 return True
 

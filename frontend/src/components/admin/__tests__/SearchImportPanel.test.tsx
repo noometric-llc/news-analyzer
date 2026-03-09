@@ -34,6 +34,7 @@ const mockUseSearchImport = vi.mocked(useSearchImport);
 
 // Test data types
 interface TestRecord {
+  [key: string]: unknown;
   id: string;
   name: string;
   type: string;

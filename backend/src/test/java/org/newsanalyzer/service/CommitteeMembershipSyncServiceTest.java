@@ -110,13 +110,20 @@ class CommitteeMembershipSyncServiceTest {
         void noCongressSpecified_usesDefault118() {
             // Given
             when(congressApiClient.isConfigured()).thenReturn(true);
-            when(committeeRepository.findAll()).thenReturn(List.of());
+            when(committeeRepository.findAll()).thenReturn(List.of(testCommittee));
+
+            ObjectNode response = createCommitteeResponse(List.of());
+            when(congressApiClient.fetchCommitteeByCode("house", "hsju00"))
+                    .thenReturn(Optional.of(response));
+            when(committeeRepository.findByCommitteeCode("hsju00"))
+                    .thenReturn(Optional.of(testCommittee));
 
             // When
             syncService.syncAllMemberships();
 
             // Then
             verify(committeeRepository).findAll();
+            verify(congressApiClient).fetchCommitteeByCode("house", "hsju00");
         }
 
         @Test

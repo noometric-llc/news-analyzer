@@ -264,7 +264,7 @@ class TestNameScoring:
         score = service._score_name_similarity(
             "EPA",
             "Environmental Protection Agency",
-            aliases=[]
+            candidate_aliases=[]
         )
 
         assert score >= 0.9
@@ -276,7 +276,7 @@ class TestNameScoring:
         score = service._score_name_similarity(
             "EPA",
             "United States Environmental Protection Agency",
-            aliases=["EPA", "US EPA"]
+            candidate_aliases=["EPA", "US EPA"]
         )
 
         assert score >= 0.9
