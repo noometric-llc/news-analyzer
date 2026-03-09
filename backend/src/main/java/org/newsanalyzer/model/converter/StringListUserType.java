@@ -24,7 +24,10 @@ public class StringListUserType implements UserType<List<String>> {
 
     @Override
     public int getSqlType() {
-        return Types.ARRAY;
+        // Use Types.OTHER instead of Types.ARRAY to prevent Hibernate 6 from
+        // trying to wrap this in BasicPluralType (which causes ClassCastException).
+        // The actual JDBC array handling is done in nullSafeSet/nullSafeGet.
+        return Types.OTHER;
     }
 
     @Override
