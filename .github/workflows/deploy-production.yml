@@ -101,10 +101,10 @@ jobs:
             git reset --hard origin/${{ github.ref_name }}
 
             echo "=== Building Docker images ==="
-            docker compose -f docker-compose.deploy.yml build
+            docker compose -f deploy/production/docker-compose.yml build
 
             echo "=== Deploying services ==="
-            docker compose -f docker-compose.deploy.yml up -d
+            docker compose -f deploy/production/docker-compose.yml up -d
 
             echo "=== Waiting for services to be healthy ==="
             sleep 30
