@@ -66,6 +66,10 @@ jobs:
     name: Run Tests Before Deploy
     needs: validate
     uses: ./.github/workflows/api-tests.yml
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
 
   # ==================== Deploy to Production ====================
   deploy:
