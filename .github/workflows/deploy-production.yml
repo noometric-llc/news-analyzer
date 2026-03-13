@@ -103,6 +103,9 @@ jobs:
             git checkout ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
 
+            echo "=== Stopping existing services ==="
+            docker compose -f deploy/production/docker-compose.yml down --remove-orphans || true
+
             echo "=== Pulling latest images ==="
             docker compose -f deploy/production/docker-compose.yml pull
 
