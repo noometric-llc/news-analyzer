@@ -32,21 +32,18 @@ public class SecurityConfig {
     }
 
     /**
-     * Production security configuration - requires authentication
+     * Production security configuration - permits all requests for now.
+     * TODO: Add JWT-based auth with endpoint-level rules when user accounts are implemented.
      */
     @Bean
     @Profile("!dev & !test")
     public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**")
-            )
-            .cors(cors -> cors.configure(http))
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .anyRequest().authenticated()
-            )
-            .httpBasic(basic -> basic.realmName("NewsAnalyzer"));
+                .anyRequest().permitAll()
+            );
 
         return http.build();
     }
