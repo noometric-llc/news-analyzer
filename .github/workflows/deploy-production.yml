@@ -104,13 +104,16 @@ jobs:
             git reset --hard origin/${{ github.ref_name }}
 
             echo "=== Stopping existing services ==="
-            docker compose -f deploy/production/docker-compose.yml down --remove-orphans || true
+            docker compose --env-file .env -f deploy/production/docker-compose.yml down --remove-orphans || true
+
+            echo "=== Removing leftover containers ==="
+            docker rm -f newsanalyzer-postgres newsanalyzer-redis newsanalyzer-backend newsanalyzer-frontend newsanalyzer-reasoning-service newsanalyzer-nginx newsanalyzer-certbot newsanalyzer-otel-collector newsanalyzer-prometheus newsanalyzer-loki newsanalyzer-tempo newsanalyzer-grafana 2>/dev/null || true
 
             echo "=== Pulling latest images ==="
-            docker compose -f deploy/production/docker-compose.yml pull
+            docker compose --env-file .env -f deploy/production/docker-compose.yml pull
 
             echo "=== Deploying services ==="
-            docker compose -f deploy/production/docker-compose.yml up -d
+            docker compose --env-file .env -f deploy/production/docker-compose.yml up -d
 
             echo "=== Waiting for services to be healthy ==="
             sleep 30
