@@ -8,7 +8,7 @@
 | **Epic Name** | Individual Table Refactor |
 | **Epic Type** | Architecture / Data Model |
 | **Priority** | HIGH (Foundational) |
-| **Status** | Ready for Sprint |
+| **Status** | In Progress (8/9 stories Done, ARCH-1.9 remaining) |
 | **Created** | 2026-01-08 |
 | **Owner** | Sarah (PO) |
 | **Depends On** | None (foundational change) |
@@ -254,14 +254,14 @@ public class CongressionalMember {
 
 | ID | Story | Priority | Estimate | Status |
 |----|-------|----------|----------|--------|
-| ARCH-1.1 | Create Individual Entity and Table | P0 | 3 pts | Draft |
-| ARCH-1.2 | Create CongressionalMember Entity and Refactor Persons Table | P0 | 4 pts | Draft |
-| ARCH-1.3 | Migrate Existing Data | P0 | **7 pts** | Draft |
-| ARCH-1.4 | Update Presidency and PositionHolding References | P0 | **5 pts** | Draft |
-| ARCH-1.5 | Update CommitteeMembership Reference | P1 | 2 pts | Draft |
-| ARCH-1.6 | Update Services Layer | P1 | 5 pts | Draft |
-| ARCH-1.7 | Update DTOs and Controllers | P1 | 4 pts | Draft |
-| ARCH-1.8 | Update Frontend Types and Components | P1 | 3 pts | Draft |
+| ARCH-1.1 | Create Individual Entity and Table | P0 | 3 pts | Done |
+| ARCH-1.2 | Create CongressionalMember Entity and Refactor Persons Table | P0 | 4 pts | Done |
+| ARCH-1.3 | Migrate Existing Data | P0 | **7 pts** | Done |
+| ARCH-1.4 | Update Presidency and PositionHolding References | P0 | **5 pts** | Done |
+| ARCH-1.5 | Update CommitteeMembership Reference | P1 | 2 pts | Done |
+| ARCH-1.6 | Update Services Layer | P1 | 5 pts | Done |
+| ARCH-1.7 | Update DTOs and Controllers | P1 | 4 pts | Done |
+| ARCH-1.8 | Update Frontend Types and Components | P1 | 1 pt (revised) | Done |
 | ARCH-1.9 | Verification and Cleanup | P2 | 2 pts | Draft |
 
 **Epic Total:** 36 story points *(revised from 32 per architect review)*
@@ -738,6 +738,7 @@ Each migration includes reverse migration:
 |------|---------|-------------|--------|
 | 2026-01-08 | 1.0 | Initial epic creation | Sarah (PO) |
 | 2026-01-08 | 1.1 | Architect review: Applied 7 modifications (MOD-1 through MOD-7), revised estimates (32→36 pts), updated migration order | Winston (Architect) |
+| 2026-03-14 | 1.2 | Stories 1.1–1.8 confirmed Done via codebase audit. ARCH-1.8 revised (3→1 pt, separate type files unnecessary). Only ARCH-1.9 (Verification & Cleanup) remains. Person.java and PersonRepository.java still need removal. | Sarah (PO) |
 
 ## Approval
 
