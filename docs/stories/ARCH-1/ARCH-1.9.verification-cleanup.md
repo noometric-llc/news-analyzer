@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Ready for Review
+**Status:** Done
 **Priority:** P1 (revised from P2 — blocking ARCH-1 completion which blocks KB-2)
 **Estimate:** 5 story points (revised from 2 — codebase audit revealed 9 production files still using Person/PersonRepository)
 **Phase:** Final
