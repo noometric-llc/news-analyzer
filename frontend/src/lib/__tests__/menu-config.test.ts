@@ -67,22 +67,33 @@ describe('menu-config', () => {
       expect(branchChildren?.[2].href).toBe('/knowledge-base/government/judicial');
     });
 
-    it('Executive Branch has 6 sub-sections (UI-6.1)', () => {
+    it('Executive Branch has 5 sub-sections (KB-2.6 consolidated President+VP into Administrations)', () => {
       const government = publicMenuItemsFlat.find(
         (item) => item.label === 'U.S. Federal Government'
       );
       const branches = government?.children?.find((item) => item.label === 'Branches');
       const executive = branches?.children?.find((item) => item.label === 'Executive Branch');
 
-      expect(executive?.children).toHaveLength(6);
+      expect(executive?.children).toHaveLength(5);
       expect(executive?.children?.map((c) => c.label)).toEqual([
-        'President of the United States',
-        'Vice President of the United States',
+        'Presidential Administrations',
         'Executive Office of the President',
         'Cabinet Departments',
         'Independent Agencies',
         'Government Corporations',
       ]);
+    });
+
+    it('does NOT have separate President or Vice President entries', () => {
+      const government = publicMenuItemsFlat.find(
+        (item) => item.label === 'U.S. Federal Government'
+      );
+      const branches = government?.children?.find((item) => item.label === 'Branches');
+      const executive = branches?.children?.find((item) => item.label === 'Executive Branch');
+      const labels = executive?.children?.map((c) => c.label) ?? [];
+
+      expect(labels).not.toContain('President of the United States');
+      expect(labels).not.toContain('Vice President of the United States');
     });
 
     it('Executive Branch sub-sections have correct routes', () => {
@@ -93,12 +104,11 @@ describe('menu-config', () => {
       const executive = branches?.children?.find((item) => item.label === 'Executive Branch');
       const subSections = executive?.children;
 
-      expect(subSections?.[0].href).toBe('/knowledge-base/government/executive/president');
-      expect(subSections?.[1].href).toBe('/knowledge-base/government/executive/vice-president');
-      expect(subSections?.[2].href).toBe('/knowledge-base/government/executive/eop');
-      expect(subSections?.[3].href).toBe('/knowledge-base/government/executive/cabinet');
-      expect(subSections?.[4].href).toBe('/knowledge-base/government/executive/independent-agencies');
-      expect(subSections?.[5].href).toBe('/knowledge-base/government/executive/corporations');
+      expect(subSections?.[0].href).toBe('/knowledge-base/government/executive/administrations');
+      expect(subSections?.[1].href).toBe('/knowledge-base/government/executive/eop');
+      expect(subSections?.[2].href).toBe('/knowledge-base/government/executive/cabinet');
+      expect(subSections?.[3].href).toBe('/knowledge-base/government/executive/independent-agencies');
+      expect(subSections?.[4].href).toBe('/knowledge-base/government/executive/corporations');
     });
 
     it('Executive Branch sub-sections all have icons', () => {

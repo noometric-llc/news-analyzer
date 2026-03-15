@@ -8,8 +8,6 @@ import {
   List,
   GitBranch,
   BookOpen,
-  Crown,
-  UserCircle,
   Briefcase,
   Factory,
   Home,
@@ -49,14 +47,9 @@ export const publicMenuConfig: MenuItemData[] = [
                 href: '/knowledge-base/government/executive',
                 children: [
                   {
-                    label: 'President of the United States',
-                    icon: Crown,
-                    href: '/knowledge-base/government/executive/president',
-                  },
-                  {
-                    label: 'Vice President of the United States',
-                    icon: UserCircle,
-                    href: '/knowledge-base/government/executive/vice-president',
+                    label: 'Presidential Administrations',
+                    icon: Landmark,
+                    href: '/knowledge-base/government/executive/administrations',
                   },
                   {
                     label: 'Executive Office of the President',

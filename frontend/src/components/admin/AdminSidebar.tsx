@@ -11,8 +11,6 @@ import {
   Github,
   BookOpen,
   Building,
-  Crown,
-  UserCircle,
   Briefcase,
   Factory,
   Home,
@@ -39,8 +37,7 @@ const menuItems: MenuItemData[] = [
             icon: Building,
             href: '/admin/knowledge-base/government/executive',
             children: [
-              { label: 'President', href: '/admin/knowledge-base/government/executive/president', icon: Crown },
-              { label: 'Vice President', href: '/admin/knowledge-base/government/executive/vice-president', icon: UserCircle },
+              { label: 'Presidential Administrations', href: '/admin/knowledge-base/government/executive/administrations', icon: Landmark },
               { label: 'Executive Office', href: '/admin/knowledge-base/government/executive/eop', icon: Building },
               { label: 'Cabinet Departments', href: '/admin/knowledge-base/government/executive/cabinet', icon: Briefcase },
               { label: 'Independent Agencies', href: '/admin/knowledge-base/government/executive/independent-agencies', icon: Building2 },

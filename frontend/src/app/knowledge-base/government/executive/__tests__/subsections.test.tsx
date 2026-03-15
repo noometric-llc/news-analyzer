@@ -39,9 +39,7 @@ vi.mock('@/hooks/usePresidencySync', () => ({
   }),
 }));
 
-// Import pages
-import PresidentPage from '../president/page';
-import VicePresidentPage from '../vice-president/page';
+// Import pages (President and Vice President are now redirects — tested in redirects.test.ts)
 import EOPPage from '../eop/page';
 import CabinetPage from '../cabinet/page';
 import IndependentAgenciesPage from '../independent-agencies/page';
@@ -57,69 +55,8 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe('Executive Branch Sub-Section Pages (UI-6.3)', () => {
-  // ========== President Page ==========
-  describe('PresidentPage', () => {
-    it('renders the page title', () => {
-      render(<PresidentPage />, { wrapper });
-      expect(
-        screen.getByRole('heading', { level: 1, name: /President of the United States/i })
-      ).toBeInTheDocument();
-    });
-
-    it('renders back link to Executive Branch', () => {
-      render(<PresidentPage />, { wrapper });
-      const backLink = screen.getByRole('link', { name: /Back to Executive Branch/i });
-      expect(backLink).toHaveAttribute('href', '/knowledge-base/government/executive');
-    });
-
-    it('renders constitutional powers section', () => {
-      render(<PresidentPage />, { wrapper });
-      expect(screen.getByRole('heading', { name: /Constitutional Powers/i })).toBeInTheDocument();
-    });
-
-    it('renders term and eligibility information', () => {
-      render(<PresidentPage />, { wrapper });
-      expect(screen.getByRole('heading', { name: /Term and Eligibility/i })).toBeInTheDocument();
-      expect(screen.getByText(/Natural-born citizen/i)).toBeInTheDocument();
-    });
-
-    it('renders external links to official resources', () => {
-      render(<PresidentPage />, { wrapper });
-      const whiteHouseLink = screen.getByRole('link', { name: /The White House/i });
-      expect(whiteHouseLink).toHaveAttribute('href', 'https://www.whitehouse.gov/');
-      expect(whiteHouseLink).toHaveAttribute('target', '_blank');
-    });
-  });
-
-  // ========== Vice President Page ==========
-  describe('VicePresidentPage', () => {
-    it('renders the page title', () => {
-      render(<VicePresidentPage />, { wrapper });
-      expect(
-        screen.getByRole('heading', { level: 1, name: /Vice President of the United States/i })
-      ).toBeInTheDocument();
-    });
-
-    it('renders constitutional roles section', () => {
-      render(<VicePresidentPage />, { wrapper });
-      expect(screen.getByRole('heading', { name: /Constitutional Roles/i })).toBeInTheDocument();
-    });
-
-    it('renders term and eligibility section', () => {
-      render(<VicePresidentPage />, { wrapper });
-      expect(screen.getByRole('heading', { name: /Term and Eligibility/i })).toBeInTheDocument();
-    });
-
-    it('renders historical note', () => {
-      render(<VicePresidentPage />, { wrapper });
-      expect(screen.getByRole('heading', { name: /Historical Note/i })).toBeInTheDocument();
-    });
-
-    it('has official resources section', () => {
-      render(<VicePresidentPage />, { wrapper });
-      expect(screen.getByRole('heading', { name: /Official Resources/i })).toBeInTheDocument();
-    });
-  });
+  // NOTE: PresidentPage and VicePresidentPage are now redirects (KB-2.6).
+  // Their redirect behavior is tested in redirects.test.ts.
 
   // ========== EOP Page ==========
   describe('EOPPage', () => {
@@ -228,8 +165,6 @@ describe('Executive Branch Sub-Section Pages (UI-6.3)', () => {
   // ========== Common Elements Tests ==========
   describe('Common Elements', () => {
     const pages = [
-      { Page: PresidentPage, name: 'President' },
-      { Page: VicePresidentPage, name: 'Vice President' },
       { Page: EOPPage, name: 'EOP' },
       { Page: CabinetPage, name: 'Cabinet' },
       { Page: IndependentAgenciesPage, name: 'Independent Agencies' },

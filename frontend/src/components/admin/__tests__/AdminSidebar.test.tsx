@@ -79,6 +79,18 @@ describe('AdminSidebar', () => {
       const agenciesLink = screen.getByRole('link', { name: /agencies & departments/i });
       expect(agenciesLink).toHaveAttribute('href', '/admin/factbase/executive/agencies');
     });
+
+    it('renders consolidated Presidential Administrations link (KB-2.6)', () => {
+      render(<AdminSidebar />);
+      const adminLink = screen.getByRole('link', { name: /presidential administrations/i });
+      expect(adminLink).toHaveAttribute('href', '/admin/knowledge-base/government/executive/administrations');
+    });
+
+    it('does NOT render separate President or Vice President links (KB-2.6)', () => {
+      render(<AdminSidebar />);
+      expect(screen.queryByRole('link', { name: /^president$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^vice president$/i })).not.toBeInTheDocument();
+    });
   });
 
   // ====== Collapse/Expand Tests ======

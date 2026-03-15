@@ -349,3 +349,71 @@ export function usePresidencyExecutiveOrders(
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
+
+// ============================================================================
+// EO Sync Types, API Functions & Hooks
+// ============================================================================
+
+export interface EOSyncStatus {
+  inProgress: boolean;
+  eoCounts: Record<string, number>; // presidencyNumber → count
+  lastSync?: Record<string, unknown>;
+}
+
+const eoSyncKeys = {
+  all: ['eo-sync'] as const,
+  status: () => [...eoSyncKeys.all, 'status'] as const,
+  lastResult: () => [...eoSyncKeys.all, 'last-result'] as const,
+};
+
+async function fetchEOSyncStatus(): Promise<EOSyncStatus> {
+  const response = await fetch(`${API_BASE}/api/admin/sync/executive-orders/status`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch EO sync status');
+  }
+  return response.json();
+}
+
+async function triggerEOSync(): Promise<SyncJobStatus> {
+  const response = await fetch(`${API_BASE}/api/admin/sync/executive-orders`, {
+    method: 'POST',
+  });
+  if (response.status === 409) {
+    throw new Error('Executive Order sync already in progress');
+  }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Executive Order sync failed');
+  }
+  return response.json();
+}
+
+/**
+ * Hook to fetch EO sync status (polling when in progress)
+ */
+export function useEOSyncStatus() {
+  return useQuery({
+    queryKey: eoSyncKeys.status(),
+    queryFn: fetchEOSyncStatus,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => {
+      const data = query.state.data as EOSyncStatus | undefined;
+      return data?.inProgress ? 5000 : false;
+    },
+  });
+}
+
+/**
+ * Hook to trigger EO sync (admin only)
+ */
+export function useEOSync() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: triggerEOSync,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: eoSyncKeys.status() });
+    },
+  });
+}

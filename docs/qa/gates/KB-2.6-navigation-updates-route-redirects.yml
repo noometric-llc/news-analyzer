@@ -1,0 +1,37 @@
+schema: 1
+story: 'KB-2.6'
+story_title: 'Navigation Updates & Route Redirects'
+gate: PASS
+status_reason: 'All 7 ACs met. Clean sidebar consolidation with Landmark icon. All 4 redirects use server-side redirect(). 10 new tests, existing tests updated.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2026-03-15T14:00:00Z'
+quality_score: 100
+expires: '2026-03-29T14:00:00Z'
+
+top_issues: []
+waiver: { active: false }
+
+evidence:
+  tests_reviewed: 10
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'No security implications — navigation/redirect changes only'
+  performance:
+    status: PASS
+    notes: 'Server-side redirect() is optimal — no client-side rendering of old pages'
+  reliability:
+    status: PASS
+    notes: 'Backward-compatible URLs preserved via redirect stubs'
+  maintainability:
+    status: PASS
+    notes: 'Admin sidebar correctly updated in AdminSidebar.tsx (not menu-config.ts as story assumed); unused imports cleaned'
+
+recommendations:
+  immediate: []
+  future: []
