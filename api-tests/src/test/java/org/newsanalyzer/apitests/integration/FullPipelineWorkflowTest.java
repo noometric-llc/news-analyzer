@@ -354,6 +354,7 @@ class FullPipelineWorkflowTest extends IntegrationTestBase {
     }
 
     @Test
+    @Tag("performance")
     @DisplayName("Given pipeline execution, when timing measured, then completes within threshold")
     void shouldCompleteWithinTimeThreshold() {
         // Given - article to process

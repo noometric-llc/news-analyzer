@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  */
 @Tag("integration")
+@Tag("performance")
 @DisplayName("Performance Measurement Tests")
 class PerformanceTest extends IntegrationTestBase {
 
