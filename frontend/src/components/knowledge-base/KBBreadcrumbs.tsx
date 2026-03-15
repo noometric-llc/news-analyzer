@@ -33,6 +33,7 @@ const segmentLabels: Record<string, string> = {
   'cabinet': 'Cabinet Departments',
   'independent-agencies': 'Independent Agencies',
   'corporations': 'Government Corporations',
+  'administrations': 'Presidential Administrations',
 };
 
 /**

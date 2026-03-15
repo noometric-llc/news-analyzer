@@ -28,3 +28,4 @@ export { PresidencyTable } from './PresidencyTable';
 export type { PresidencyTableProps } from './PresidencyTable';
 export { PresidencyExpandedRow } from './PresidencyExpandedRow';
 export type { PresidencyExpandedRowProps } from './PresidencyExpandedRow';
+export { AdministrationPage } from './AdministrationPage';
