@@ -553,12 +553,22 @@ public class PlumCsvImportService {
             if (startDate == null) {
                 startDate = LocalDate.now(); // Default to today if not provided
             }
+            LocalDate endDate = parseDate(record.getIncumbentVacateDate(), "incumbentVacateDate");
+
+            // Guard against bad PLUM data where end_date precedes start_date
+            if (endDate != null && endDate.isBefore(startDate)) {
+                log.warn("PLUM data has endDate ({}) before startDate ({}) — swapping dates for individual {}",
+                        endDate, startDate, individual.getId());
+                LocalDate temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
 
             holding = PositionHolding.builder()
                     .individualId(individual.getId())
                     .positionId(position.getId())
                     .startDate(startDate)
-                    .endDate(parseDate(record.getIncumbentVacateDate(), "incumbentVacateDate"))
+                    .endDate(endDate)
                     .tenure(record.getTenureCode())
                     .dataSource(DataSource.PLUM_CSV)
                     .sourceReference(plumCsvUrl)

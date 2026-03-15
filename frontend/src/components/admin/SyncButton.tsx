@@ -146,14 +146,16 @@ export function SyncButton({ type, title, description, warning }: SyncButtonProp
             <span className="text-amber-500">&#9888;</span>
             {title}?
           </DialogTitle>
-          <DialogDescription className="space-y-3 pt-2">
-            <p>{description}</p>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              {warning.split('.').filter(Boolean).map((point, i) => (
-                <li key={i}>{point.trim()}</li>
-              ))}
-            </ul>
-            <p className="font-medium">Are you sure you want to proceed?</p>
+          <DialogDescription asChild>
+            <div className="space-y-3 pt-2 text-sm text-muted-foreground">
+              <p>{description}</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {warning.split('.').filter(Boolean).map((point, i) => (
+                  <li key={i}>{point.trim()}</li>
+                ))}
+              </ul>
+              <p className="font-medium">Are you sure you want to proceed?</p>
+            </div>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
