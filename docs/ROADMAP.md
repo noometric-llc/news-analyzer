@@ -72,6 +72,18 @@ NewsAnalyzer v2 is a complete redesign from v1's failed architecture, implementi
 | **KB-1** | Complete | 100% | President of the United States Data |
 | **KB-2** | Complete | 100% | Presidential Administrations |
 
+### AI Evaluation Track
+
+| Epic | Status | Progress | Description |
+|------|--------|----------|-------------|
+| **EVAL-1** | Complete | 100% | KB Fact Extraction & Synthetic Article Generator |
+| **EVAL-2** | Planned | 0% | Entity Extraction Evaluation Harness (Promptfoo + Precision/Recall/F1) |
+| **EVAL-3** | Planned | 0% | Cognitive Bias & Logical Fallacy Evaluation via Ontology |
+
+> **EVAL-2 Note:** Build an entity extraction evaluation harness measuring precision/recall/F1 against a gold dataset derived from EVAL-1's synthetic articles. Integrates Promptfoo for industry-standard eval tooling, prompt regression testing, and model comparison. Highest portfolio ROI for AI Evaluation Engineer roles — directly demonstrates evaluation methodology, metrics design, and eval tooling proficiency. Re-sequenced on 2026-03-19 to prioritize demonstrable eval skills ahead of ontology work.
+>
+> **EVAL-3 Note:** Extends the OWL ontology with academically-grounded cognitive bias and logical fallacy definitions. LLM evaluation prompts are grounded in SPARQL-retrieved definitions rather than relying on the model's internal training knowledge — making analysis auditable and traceable to cited academic sources. Builds on EVAL-2's evaluation framework. Concept originated from architecture discussion on 2026-03-16.
+
 ### Overall MVP Status
 
 | Milestone | Status | Notes |

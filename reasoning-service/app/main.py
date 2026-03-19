@@ -10,6 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import entities, reasoning, fallacies, government_orgs
+from app.api.eval import facts as eval_facts
+from app.api.eval import articles as eval_articles
+from app.api.eval import batches as eval_batches
 from app.telemetry import init_telemetry, instrument_app
 
 # Initialize OTel BEFORE app creation — providers must be set
@@ -66,6 +69,9 @@ app.include_router(entities.router, prefix="/entities", tags=["entities"])
 app.include_router(reasoning.router, prefix="/reasoning", tags=["reasoning"])
 app.include_router(fallacies.router, prefix="/fallacies", tags=["fallacies"])
 app.include_router(government_orgs.router, prefix="/government-orgs", tags=["government-organizations"])
+app.include_router(eval_facts.router, prefix="/eval/facts", tags=["eval-facts"])
+app.include_router(eval_articles.router, prefix="/eval/articles", tags=["eval-articles"])
+app.include_router(eval_batches.router, prefix="/eval/batches", tags=["eval-batches"])
 
 
 if __name__ == "__main__":

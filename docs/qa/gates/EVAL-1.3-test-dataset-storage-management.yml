@@ -1,0 +1,85 @@
+schema: 1
+story: "EVAL-1.3"
+story_title: "Test Dataset Storage & Management"
+gate: PASS
+status_reason: "All 8 acceptance criteria verified. Clean database schema with proper indexes, complete REST API with 8 endpoints, full cross-service integration. 29 tests passing (26 JUnit + 3 pytest). No blocking issues found."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-03-19T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "MNT-001"
+    severity: low
+    finding: "DTO string fields lack @Size validation matching DB VARCHAR constraints"
+    suggested_action: "Add @Size annotations to CreateBatchRequest and DatasetQueryRequest string fields"
+    suggested_owner: dev
+  - id: "MNT-002"
+    severity: low
+    finding: "Branch JSONB filter in EvalDatasetService uses string concatenation instead of ObjectMapper"
+    suggested_action: "Use ObjectMapper.writeValueAsString() for JSON construction"
+    suggested_owner: dev
+  - id: "MNT-003"
+    severity: low
+    finding: "POST /batches validation test only covers generic empty body; no per-field validation tests"
+    suggested_action: "Add controller tests for each required field missing individually"
+    suggested_owner: dev
+  - id: "MNT-004"
+    severity: low
+    finding: "BackendClient.post_batch() has no retry logic for transient failures"
+    suggested_action: "Add exponential backoff retry for 503/timeout errors"
+    suggested_owner: dev
+  - id: "MNT-005"
+    severity: low
+    finding: "Stats endpoint runs 4+ separate queries; could consolidate"
+    suggested_action: "Combine into single aggregate SQL at scale"
+    suggested_owner: dev
+  - id: "DOC-001"
+    severity: low
+    finding: "OpenAPI docs not visually verified (requires running app)"
+    suggested_action: "Verify Swagger UI shows new endpoints during next local run"
+    suggested_owner: dev
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 6 }
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Stats query performance if dataset grows beyond 100K articles"
+      - "Storage failure rate in _store_batch() — articles generated but not persisted"
+
+quality_score: 90
+expires: "2026-04-02T00:00:00Z"
+
+evidence:
+  tests_reviewed: 29
+  risks_identified: 6
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8]
+    ac_gaps: []
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "DELETE endpoint lacks auth but consistent with project-wide state (no JWT yet). Internal API only."
+  performance:
+    status: PASS
+    notes: "GIN index on source_facts, B-tree indexes on common filter columns. Stats queries acceptable for current scale."
+  reliability:
+    status: PASS
+    notes: "Backend batch creation is atomic via @Transactional. Storage failures in reasoning-service are logged gracefully."
+  maintainability:
+    status: PASS
+    notes: "Clean separation into eval/ subpackages. Follows existing codebase patterns. JSONB for flexible schema."
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Add @Size validation to DTO string fields matching DB VARCHAR limits"
+      refs: ["backend/src/main/java/org/newsanalyzer/dto/eval/CreateBatchRequest.java"]
+    - action: "Use ObjectMapper for JSONB filter construction"
+      refs: ["backend/src/main/java/org/newsanalyzer/service/eval/EvalDatasetService.java"]
+    - action: "Add retry logic to post_batch() for transient errors"
+      refs: ["reasoning-service/app/clients/backend_client.py"]
+    - action: "Consolidate stats queries into single aggregate SQL"
+      refs: ["backend/src/main/java/org/newsanalyzer/service/eval/EvalDatasetService.java"]

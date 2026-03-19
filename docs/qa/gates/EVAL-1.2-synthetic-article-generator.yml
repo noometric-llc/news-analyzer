@@ -1,0 +1,20 @@
+schema: 1
+story: 'EVAL-1.2'
+gate: PASS
+status_reason: 'All 8 acceptance criteria met. 74 new tests passing, 334 total with no regressions. Perturbation engine is fully deterministic and testable. Article generator has clean dry-run mode and lazy client initialization.'
+reviewer: 'Quinn'
+updated: '2026-03-17T18:00:00Z'
+top_issues:
+  - id: 'MNT-001'
+    severity: low
+    finding: 'Rate limiting is per-call sleep, not a global token bucket — concurrent batch runs would each track independently'
+    suggested_action: 'Acceptable for single-batch evaluation runs. If concurrent batches are needed, refactor to shared rate limiter.'
+  - id: 'MNT-002'
+    severity: low
+    finding: '_store_batch() is a logging stub — batch results are not persisted'
+    suggested_action: 'By design — EVAL-1.3 will add backend storage endpoint and implement the POST call.'
+  - id: 'DOC-001'
+    severity: low
+    finding: 'GET /eval/articles/{id} and GET /eval/batches/{id}/status return 501 stubs'
+    suggested_action: 'By design — EVAL-1.3 will implement storage and retrieval. 501 clearly signals "not yet implemented".'
+waiver: { active: false }

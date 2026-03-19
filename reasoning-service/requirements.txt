@@ -36,6 +36,9 @@ opentelemetry-instrumentation-fastapi>=0.48b0
 opentelemetry-instrumentation-httpx>=0.48b0
 opentelemetry-instrumentation-logging>=0.48b0
 
+# EVAL: Synthetic Article Generation
+anthropic>=0.40.0
+
 # External Entity Linking (Phase 2)
 cachetools>=5.3.0
 rapidfuzz>=3.0.0
