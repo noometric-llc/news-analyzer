@@ -120,7 +120,7 @@ public class FjcCsvImportService {
             log.info("Parsed {} records from FJC CSV", totalRecords);
 
             // Apply offset/limit
-            int startIdx = offset != null ? offset : 0;
+            int startIdx = offset != null ? Math.min(offset, totalRecords) : 0;
             int endIdx = limit != null ? Math.min(startIdx + limit, totalRecords) : totalRecords;
             records = records.subList(startIdx, endIdx);
             log.info("Processing records {} to {} (out of {})", startIdx, endIdx, totalRecords);
