@@ -11,11 +11,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.newsanalyzer.model.CongressionalMember;
 import org.newsanalyzer.model.Chamber;
-import org.newsanalyzer.model.DataSource;
 import org.newsanalyzer.model.Individual;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
