@@ -156,7 +156,7 @@ public class MemberSyncService {
         );
 
         // Update additional fields on the linked Individual
-        if (syncData.imageUrl != null || syncData.middleName != null || syncData.gender != null) {
+        if (syncData.imageUrl != null || syncData.middleName != null || syncData.gender != null || syncData.party != null) {
             individualService.findById(member.getIndividualId()).ifPresent(individual -> {
                 boolean updated = false;
                 if (syncData.imageUrl != null && individual.getImageUrl() == null) {
@@ -169,6 +169,10 @@ public class MemberSyncService {
                 }
                 if (syncData.gender != null && individual.getGender() == null) {
                     individual.setGender(syncData.gender);
+                    updated = true;
+                }
+                if (syncData.party != null && !syncData.party.equals(individual.getParty())) {
+                    individual.setParty(syncData.party);
                     updated = true;
                 }
                 if (updated) {
@@ -233,21 +237,51 @@ public class MemberSyncService {
     /**
      * Parse Congress.gov API response to extract member fields.
      *
-     * API returns: name (full), partyName, state, terms[].chamber, depiction.imageUrl
-     * Not: firstName, lastName, party (separate fields)
+     * Handles two response formats:
+     * - List endpoint (/member?currentMember=true): name, partyName, state, terms.item[]
+     * - Detail endpoint (/member/{bioguideId}): firstName, lastName, partyHistory[], terms[]
      */
     private MemberSyncData parseMemberData(JsonNode data) {
         MemberSyncData syncData = new MemberSyncData();
 
-        // Parse full name into first/last name
-        // Format is typically "LastName, FirstName MiddleName" or just "LastName, FirstName"
-        String fullName = getTextOrNull(data, "name");
-        if (fullName != null) {
-            parseNameIntoData(fullName, syncData);
+        // Name: detail endpoint has firstName/lastName directly; list has "LastName, First"
+        String firstName = getTextOrNull(data, "firstName");
+        String lastName = getTextOrNull(data, "lastName");
+        if (firstName != null && lastName != null) {
+            syncData.firstName = firstName;
+            syncData.lastName = lastName;
+            // Detail endpoint may also have directOrderName with middle name
+            String directName = getTextOrNull(data, "directOrderName");
+            if (directName != null) {
+                // Format: "First Middle Last" — extract middle if present
+                String[] parts = directName.split("\\s+");
+                if (parts.length > 2) {
+                    StringBuilder middle = new StringBuilder();
+                    for (int i = 1; i < parts.length - 1; i++) {
+                        if (middle.length() > 0) middle.append(" ");
+                        middle.append(parts[i]);
+                    }
+                    syncData.middleName = middle.toString();
+                }
+            }
+        } else {
+            // Fall back to list endpoint format: "LastName, FirstName MiddleName"
+            String fullName = getTextOrNull(data, "name");
+            if (fullName != null) {
+                parseNameIntoData(fullName, syncData);
+            }
         }
 
-        // API uses "partyName" not "party"
+        // Party: detail endpoint has partyHistory array; list has partyName
         syncData.party = getTextOrNull(data, "partyName");
+        if (syncData.party == null) {
+            JsonNode partyHistory = data.path("partyHistory");
+            if (partyHistory.isArray() && partyHistory.size() > 0) {
+                // Use most recent party (last in array)
+                JsonNode latestParty = partyHistory.get(partyHistory.size() - 1);
+                syncData.party = getTextOrNull(latestParty, "partyName");
+            }
+        }
 
         // State - API returns full state name, need to map to 2-letter code
         String stateStr = getTextOrNull(data, "state");
