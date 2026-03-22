@@ -1,7 +1,5 @@
 package org.newsanalyzer.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.newsanalyzer.model.Committee;
 import org.newsanalyzer.model.CommitteeMembership;
 import org.newsanalyzer.model.CongressionalMember;
@@ -11,52 +9,50 @@ import org.newsanalyzer.repository.CommitteeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Service for synchronizing committee membership data from Congress.gov API.
+ * Service for synchronizing committee membership data from the
+ * unitedstates/congress-legislators GitHub repository.
  *
- * Handles syncing the relationship between members and committees,
- * including roles like Chair, Ranking Member, etc.
+ * The Congress.gov API v3 does not expose committee membership data,
+ * so this service uses the community-maintained YAML files instead.
  *
  * Part of ARCH-1.6: Updated to use CongressionalMember instead of Person.
  *
  * @author James (Dev Agent)
  * @since 2.0.0
+ * @see <a href="https://github.com/unitedstates/congress-legislators">Data source</a>
  */
 @Service
-@Transactional
 public class CommitteeMembershipSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(CommitteeMembershipSyncService.class);
+    private static final String DATA_SOURCE = "LEGISLATORS_REPO";
 
     private final AtomicBoolean syncInProgress = new AtomicBoolean(false);
 
-    private final CongressApiClient congressApiClient;
+    private final LegislatorsRepoClient legislatorsRepoClient;
     private final CommitteeMembershipRepository membershipRepository;
     private final CommitteeRepository committeeRepository;
     private final CongressionalMemberService congressionalMemberService;
-    private final ObjectMapper objectMapper;
 
     // Default to current Congress (can be configured)
-    private static final int CURRENT_CONGRESS = 118;
+    private static final int CURRENT_CONGRESS = 119;
 
-    public CommitteeMembershipSyncService(CongressApiClient congressApiClient,
+    public CommitteeMembershipSyncService(LegislatorsRepoClient legislatorsRepoClient,
                                           CommitteeMembershipRepository membershipRepository,
                                           CommitteeRepository committeeRepository,
-                                          CongressionalMemberService congressionalMemberService,
-                                          ObjectMapper objectMapper) {
-        this.congressApiClient = congressApiClient;
+                                          CongressionalMemberService congressionalMemberService) {
+        this.legislatorsRepoClient = legislatorsRepoClient;
         this.membershipRepository = membershipRepository;
         this.committeeRepository = committeeRepository;
         this.congressionalMemberService = congressionalMemberService;
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -94,7 +90,12 @@ public class CommitteeMembershipSyncService {
     /**
      * Sync memberships for all committees in a specific Congress.
      *
-     * @param congress Congress session number (e.g., 118)
+     * Fetches committee-membership-current.yaml from the unitedstates/congress-legislators
+     * GitHub repository and creates CommitteeMembership records by matching:
+     * - Thomas committee IDs → Committee entities (via committee_code)
+     * - BioGuide IDs → CongressionalMember entities
+     *
+     * @param congress Congress session number (e.g., 119)
      * @return SyncResult with statistics
      */
     public SyncResult syncAllMemberships(int congress) {
@@ -107,39 +108,55 @@ public class CommitteeMembershipSyncService {
         }
 
         try {
-            if (!congressApiClient.isConfigured()) {
-                log.error("Congress.gov API key not configured. Set CONGRESS_API_KEY environment variable.");
+            log.info("Starting sync of committee memberships for Congress {}", congress);
+
+            // Fetch committee membership data from GitHub repo
+            Map<String, List<Map<String, Object>>> membershipData =
+                    legislatorsRepoClient.fetchCommitteeMembershipCurrent();
+
+            if (membershipData.isEmpty()) {
+                log.error("Failed to fetch committee membership data from GitHub repo");
+                result.errors++;
                 return result;
             }
 
-            log.info("Starting sync of committee memberships for Congress {}", congress);
+            result.total = membershipData.size();
+            log.info("Fetched membership data for {} committees from GitHub repo", membershipData.size());
 
-            // Get all committees — fail fast if none exist
-            List<Committee> committees = committeeRepository.findAll();
-            if (committees.isEmpty()) {
-                log.error("No committees found in database. Run committee sync first before syncing memberships.");
-                throw new IllegalStateException(
-                        "Cannot sync memberships: committees table is empty. Run committee sync first.");
-            }
-            result.total = committees.size();
-            log.info("Found {} committees to sync memberships for", committees.size());
+            for (Map.Entry<String, List<Map<String, Object>>> entry : membershipData.entrySet()) {
+                String thomasId = entry.getKey();
+                List<Map<String, Object>> members = entry.getValue();
 
-            for (Committee committee : committees) {
                 try {
-                    SyncResult committeeResult = syncMembershipsForCommittee(
-                            committee.getCommitteeCode(),
-                            getChamberApiValue(committee),
-                            congress
-                    );
-                    result.added += committeeResult.added;
-                    result.updated += committeeResult.updated;
-                    result.skipped += committeeResult.skipped;
-                    result.errors += committeeResult.errors;
+                    // Convert Thomas ID to committee code and find committee
+                    String committeeCode = thomasIdToCommitteeCode(thomasId);
+                    Optional<Committee> committeeOpt = committeeRepository.findByCommitteeCode(committeeCode);
+
+                    if (committeeOpt.isEmpty()) {
+                        log.debug("Committee not found for Thomas ID {} (tried code: {})", thomasId, committeeCode);
+                        result.skipped++;
+                        continue;
+                    }
+
+                    Committee committee = committeeOpt.get();
+
+                    for (Map<String, Object> memberRecord : members) {
+                        try {
+                            boolean isNew = syncMembershipFromYaml(memberRecord, committee, congress);
+                            if (isNew) {
+                                result.added++;
+                            } else {
+                                result.updated++;
+                            }
+                        } catch (Exception e) {
+                            log.debug("Skipped member on {}: {}", thomasId, e.getMessage());
+                            result.skipped++;
+                        }
+                    }
 
                 } catch (Exception e) {
                     result.errors++;
-                    log.error("Failed to sync memberships for committee {}: {}",
-                            committee.getCommitteeCode(), e.getMessage());
+                    log.error("Failed to sync memberships for committee {}: {}", thomasId, e.getMessage());
                 }
             }
 
@@ -151,74 +168,20 @@ public class CommitteeMembershipSyncService {
     }
 
     /**
-     * Sync memberships for a specific committee.
+     * Sync a single membership from YAML record data.
      *
-     * @param committeeCode Committee system code
-     * @param chamber Chamber API value ("house", "senate", "joint")
-     * @param congress Congress session number
-     * @return SyncResult with statistics
-     */
-    public SyncResult syncMembershipsForCommittee(String committeeCode, String chamber, int congress) {
-        SyncResult result = new SyncResult();
-
-        Optional<JsonNode> response = congressApiClient.fetchCommitteeByCode(chamber, committeeCode);
-
-        if (response.isEmpty()) {
-            log.warn("Failed to fetch committee details for {}", committeeCode);
-            result.errors++;
-            return result;
-        }
-
-        JsonNode committeeData = response.get().path("committee");
-        if (committeeData.isMissingNode()) {
-            log.warn("No committee data found for {}", committeeCode);
-            result.errors++;
-            return result;
-        }
-
-        // Get the committee entity
-        Optional<Committee> committee = committeeRepository.findByCommitteeCode(committeeCode);
-        if (committee.isEmpty()) {
-            log.warn("Committee {} not found in database", committeeCode);
-            result.skipped++;
-            return result;
-        }
-
-        // Sync members from the committee data
-        JsonNode members = committeeData.path("members");
-        if (members.isArray()) {
-            for (JsonNode memberData : members) {
-                try {
-                    boolean synced = syncMembership(memberData, committee.get(), congress);
-                    if (synced) {
-                        result.added++;
-                    } else {
-                        result.updated++;
-                    }
-                } catch (Exception e) {
-                    log.debug("Skipped member sync: {}", e.getMessage());
-                    result.skipped++;
-                }
-            }
-            result.total = members.size();
-        }
-
-        return result;
-    }
-
-    /**
-     * Sync a single membership from API data.
+     * YAML record format: {name: "...", bioguide: "X000123", party: "majority", rank: 1, title: "Chair"}
      *
-     * @param memberData JSON data for the member on this committee
+     * @param record YAML member record
      * @param committee Committee entity
      * @param congress Congress session number
      * @return true if new membership created, false if updated
      */
-    private boolean syncMembership(JsonNode memberData, Committee committee, int congress) {
-        String bioguideId = memberData.path("bioguideId").asText();
+    private boolean syncMembershipFromYaml(Map<String, Object> record, Committee committee, int congress) {
+        String bioguideId = (String) record.get("bioguide");
 
         if (bioguideId == null || bioguideId.isEmpty()) {
-            throw new IllegalArgumentException("Member data missing bioguideId");
+            throw new IllegalArgumentException("Member record missing bioguide ID");
         }
 
         // Find the CongressionalMember
@@ -244,36 +207,17 @@ public class CommitteeMembershipSyncService {
         membership.setCongressionalMember(member);
         membership.setCommittee(committee);
         membership.setCongress(congress);
-        membership.setRole(mapRole(memberData.path("role").asText()));
         membership.setCongressLastSync(LocalDateTime.now());
-        membership.setDataSource("CONGRESS_GOV");
+        membership.setDataSource(DATA_SOURCE);
 
-        // Map dates if available
-        String startDateStr = getTextOrNull(memberData, "startDate");
-        if (startDateStr != null) {
-            try {
-                membership.setStartDate(LocalDate.parse(startDateStr));
-            } catch (Exception e) {
-                log.debug("Could not parse start date: {}", startDateStr);
-            }
-        }
-
-        String endDateStr = getTextOrNull(memberData, "endDate");
-        if (endDateStr != null) {
-            try {
-                membership.setEndDate(LocalDate.parse(endDateStr));
-            } catch (Exception e) {
-                log.debug("Could not parse end date: {}", endDateStr);
-            }
-        }
+        // Map role from title field (e.g., "Chairman", "Ranking Member", "Vice Chair")
+        String title = record.get("title") != null ? record.get("title").toString() : null;
+        membership.setRole(mapRole(title));
 
         membershipRepository.save(membership);
 
         if (isNew) {
             log.debug("Added membership: {} on {} ({})",
-                    bioguideId, committee.getName(), membership.getRole());
-        } else {
-            log.debug("Updated membership: {} on {} ({})",
                     bioguideId, committee.getName(), membership.getRole());
         }
 
@@ -281,7 +225,40 @@ public class CommitteeMembershipSyncService {
     }
 
     /**
-     * Map role string to MembershipRole enum.
+     * Convert a Thomas committee ID to a Congress.gov system code.
+     *
+     * Thomas IDs use uppercase with no trailing digits for parent committees:
+     *   SSJU → ssju00, HSJU → hsju00
+     * Subcommittees include the number:
+     *   SSJU13 → ssju13, HSAP01 → hsap01
+     */
+    static String thomasIdToCommitteeCode(String thomasId) {
+        if (thomasId == null || thomasId.isEmpty()) {
+            throw new IllegalArgumentException("Thomas ID cannot be null or empty");
+        }
+
+        String lower = thomasId.toLowerCase();
+
+        // Check if it ends with digits (subcommittee)
+        int firstDigitIdx = -1;
+        for (int i = 0; i < lower.length(); i++) {
+            if (Character.isDigit(lower.charAt(i))) {
+                firstDigitIdx = i;
+                break;
+            }
+        }
+
+        if (firstDigitIdx == -1) {
+            // No digits — parent committee, append "00"
+            return lower + "00";
+        }
+
+        // Has digits — already a complete code
+        return lower;
+    }
+
+    /**
+     * Map role/title string to MembershipRole enum.
      */
     private MembershipRole mapRole(String roleStr) {
         if (roleStr == null || roleStr.isEmpty()) {
@@ -299,34 +276,6 @@ public class CommitteeMembershipSyncService {
             return MembershipRole.EX_OFFICIO;
         }
         return MembershipRole.MEMBER;
-    }
-
-    /**
-     * Get chamber API value from Committee entity.
-     */
-    private String getChamberApiValue(Committee committee) {
-        switch (committee.getChamber()) {
-            case SENATE:
-                return "senate";
-            case HOUSE:
-                return "house";
-            case JOINT:
-                return "joint";
-            default:
-                return "house";
-        }
-    }
-
-    /**
-     * Get text value from JSON or null if missing.
-     */
-    private String getTextOrNull(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (value.isMissingNode() || value.isNull()) {
-            return null;
-        }
-        String text = value.asText();
-        return text.isEmpty() ? null : text;
     }
 
     /**

@@ -19,7 +19,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -136,6 +138,47 @@ public class LegislatorsRepoClient {
         } catch (Exception e) {
             log.error("Error parsing {} YAML: {}", description, e.getMessage(), e);
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Fetch current committee membership data from the GitHub repository.
+     *
+     * The YAML file maps Thomas committee IDs to lists of member records.
+     * Example: SSJU: [{name: ..., bioguide: G000359, title: Chair}, ...]
+     *
+     * @return Map of Thomas committee ID to list of member records
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, List<Map<String, Object>>> fetchCommitteeMembershipCurrent() {
+        String url = config.getGithub().getBaseUrl() + "/committee-membership-current.yaml";
+        log.info("Fetching committee membership data from: {}", url);
+
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.error("Failed to fetch committee membership data: HTTP {}", response.getStatusCode());
+                return Collections.emptyMap();
+            }
+
+            String yaml = response.getBody();
+            if (yaml == null || yaml.isEmpty()) {
+                log.warn("Empty response when fetching committee membership data");
+                return Collections.emptyMap();
+            }
+
+            Map<String, List<Map<String, Object>>> data = yamlMapper.readValue(
+                    yaml, new TypeReference<LinkedHashMap<String, List<Map<String, Object>>>>() {});
+            log.info("Successfully parsed committee membership data: {} committees", data.size());
+            return data;
+
+        } catch (RestClientException e) {
+            log.error("HTTP error fetching committee membership data: {}", e.getMessage());
+            return Collections.emptyMap();
+        } catch (Exception e) {
+            log.error("Error parsing committee membership YAML: {}", e.getMessage(), e);
+            return Collections.emptyMap();
         }
     }
 
