@@ -458,6 +458,15 @@ public class FjcCsvImportService {
                 holding.setSeniorStatusDate(seniorStatusDate);
                 updated = true;
             }
+            // Backfill appointment metadata if missing
+            if (holding.getAppointingPresident() == null && record.getAppointingPresident1() != null) {
+                holding.setAppointingPresident(trimOrNull(record.getAppointingPresident1()));
+                holding.setPartyOfAppointingPresident(trimOrNull(record.getPartyOfAppointingPresident1()));
+                holding.setAbaRating(trimOrNull(record.getAbaRating1()));
+                holding.setNominationDate(parseDate(record.getNominationDate1(), "nominationDate"));
+                holding.setConfirmationDate(parseDate(record.getConfirmationDate1(), "confirmationDate"));
+                updated = true;
+            }
             if (updated) {
                 holdingRepository.save(holding);
                 stats.holdingsUpdated++;
@@ -474,6 +483,14 @@ public class FjcCsvImportService {
         holding.setSeniorStatusDate(seniorStatusDate);
         holding.setDataSource(DataSource.FJC);
         holding.setSourceReference("FJC NID: " + record.getNid());
+
+        // Appointment metadata
+        holding.setAppointingPresident(trimOrNull(record.getAppointingPresident1()));
+        holding.setPartyOfAppointingPresident(trimOrNull(record.getPartyOfAppointingPresident1()));
+        holding.setAbaRating(trimOrNull(record.getAbaRating1()));
+        holding.setNominationDate(parseDate(record.getNominationDate1(), "nominationDate"));
+        holding.setConfirmationDate(parseDate(record.getConfirmationDate1(), "confirmationDate"));
+
         holdingRepository.save(holding);
         stats.holdingsCreated++;
     }
@@ -499,6 +516,13 @@ public class FjcCsvImportService {
                 return null;
             }
         }
+    }
+
+    private String trimOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     /**

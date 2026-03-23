@@ -7,9 +7,13 @@ GET  /eval/batches/{id}/status — check batch progress (stub for EVAL-1.3)
 
 from __future__ import annotations
 
+import logging
+import traceback
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
+
+logger = logging.getLogger(__name__)
 
 from app.clients.backend_client import BackendClient
 from app.models.eval import BatchConfig, BatchResult
@@ -56,7 +60,8 @@ async def run_batch(config: BatchConfig) -> BatchResult:
     try:
         return await orchestrator.run_batch(config)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Batch generation failed:\n%s", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e) or repr(e))
     finally:
         await client.close()
 

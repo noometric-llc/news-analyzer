@@ -231,7 +231,12 @@ public class JudgeService {
             builder.commissionDate(holding.getStartDate())
                    .terminationDate(holding.getEndDate())
                    .seniorStatusDate(holding.getSeniorStatusDate())
-                   .current(holding.isCurrent());
+                   .current(holding.isCurrent())
+                   .appointingPresident(holding.getAppointingPresident())
+                   .partyOfAppointingPresident(holding.getPartyOfAppointingPresident())
+                   .abaRating(holding.getAbaRating())
+                   .nominationDate(holding.getNominationDate())
+                   .confirmationDate(holding.getConfirmationDate());
 
             // Determine status using senior status date
             String status = determineStatus(holding.getSeniorStatusDate(), holding.getEndDate());

@@ -300,6 +300,18 @@ class FactExtractor:
                 data_source="STATIC_SEED",
             ))
 
+        # Party of appointing president
+        if judge.get("partyOfAppointingPresident"):
+            facts.append(Fact(
+                subject=subject,
+                subject_id=individual_id,
+                predicate=FactPredicate.PARTY_AFFILIATION,
+                object=judge["partyOfAppointingPresident"],
+                entity_type="AppointingPresident",
+                branch=GovernmentBranch.JUDICIAL,
+                data_source="STATIC_SEED",
+            ))
+
         # Confirmation date
         if judge.get("confirmationDate"):
             facts.append(Fact(
@@ -320,12 +332,8 @@ class FactExtractor:
         )
 
     async def _find_judge_by_id(self, judge_id: str) -> dict | None:
-        """Find a judge by UUID from the paginated list."""
-        all_judges = await self._client.get_all_judges()
-        for j in all_judges:
-            if str(j.get("id")) == judge_id:
-                return j
-        return None
+        """Find a judge by UUID via direct API lookup."""
+        return await self._client.get_judge(judge_id)
 
     # ------------------------------------------------------------------
     # Random sampling — for batch generation
@@ -390,16 +398,26 @@ class FactExtractor:
         return [fs for fs in results if fs is not None]
 
     async def _sample_judges(self, count: int) -> list[FactSet]:
-        """Sample random judges and extract their facts."""
+        """Sample random judges and extract their facts.
+
+        Uses a semaphore to limit concurrent backend calls and avoid
+        exhausting the backend's database connection pool.
+        """
         page = await self._client.get_judges(page=0, size=200)
         judges = page.get("content", [])
         if not judges:
             return []
 
         sampled = random.sample(judges, min(count, len(judges)))
-        results = await asyncio.gather(
-            *(self.extract_judge_facts(str(j["id"])) for j in sampled)
-        )
+
+        # Limit concurrency to avoid overwhelming the backend connection pool
+        sem = asyncio.Semaphore(5)
+
+        async def _limited(j: dict) -> FactSet | None:
+            async with sem:
+                return await self.extract_judge_facts(str(j["id"]))
+
+        results = await asyncio.gather(*(_limited(j) for j in sampled))
         return [fs for fs in results if fs is not None]
 
 

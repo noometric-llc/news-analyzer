@@ -101,6 +101,27 @@ public class PositionHolding {
     private Integer tenure;
 
     // =====================================================================
+    // Appointment Metadata (Judicial)
+    // =====================================================================
+
+    @Column(name = "appointing_president", length = 100)
+    private String appointingPresident;
+
+    @Column(name = "party_of_appointing_president", length = 50)
+    private String partyOfAppointingPresident;
+
+    @Column(name = "aba_rating", length = 50)
+    private String abaRating;
+
+    @Column(name = "nomination_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate nominationDate;
+
+    @Column(name = "confirmation_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate confirmationDate;
+
+    // =====================================================================
     // Data Source Tracking
     // =====================================================================
 

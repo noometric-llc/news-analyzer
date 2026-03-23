@@ -226,6 +226,13 @@ class BackendClient:
             "/api/judges", page=page, size=size, **params
         )
 
+    async def get_judge(self, judge_id: str) -> dict | None:
+        """GET /api/judges/{id} — single judge by UUID.
+
+        Returns None if the judge is not found (404).
+        """
+        return await self._get_or_none(f"/api/judges/{judge_id}")
+
     async def get_all_judges(self, **filters: Any) -> list[dict]:
         """Fetch all judges across all pages with optional filters."""
         return await self._get_all_pages("/api/judges", **filters)
