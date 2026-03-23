@@ -98,6 +98,14 @@ reasoning-service/.mypy_cache/
 reasoning-service/entity_reference.db
 
 # ============================================================================
+# EVALUATION HARNESS
+# ============================================================================
+eval/node_modules/
+eval/reports/*
+!eval/reports/.gitkeep
+!eval/reports/baseline/
+
+# ============================================================================
 # DOCKER & DEPLOYMENT
 # ============================================================================
 *.log

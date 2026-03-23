@@ -7,8 +7,6 @@ import org.flywaydb.core.api.output.CleanResult;
 import org.flywaydb.core.api.output.MigrateResult;
 
 import javax.sql.DataSource;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Flyway migration runner for API integration tests.
@@ -20,6 +18,7 @@ public class FlywayMigrationRunner {
     private static final String DEFAULT_MIGRATION_LOCATION = "filesystem:../backend/src/main/resources/db/migration";
 
     private final Flyway flyway;
+    @SuppressWarnings("unused")
     private final DataSource dataSource;
 
     /**
