@@ -16,7 +16,6 @@ from uuid import UUID
 from app.clients.backend_client import BackendClient
 from app.models.eval import (
     Fact,
-    FactConfidence,
     FactPredicate,
     FactSet,
     GovernmentBranch,

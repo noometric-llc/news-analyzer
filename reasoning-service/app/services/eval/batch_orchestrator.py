@@ -19,11 +19,8 @@ from uuid import uuid4
 from app.clients.backend_client import BackendClient
 from app.models.eval import (
     ArticleTestCase,
-    ArticleType,
     BatchConfig,
     BatchResult,
-    Difficulty,
-    PerturbationType,
 )
 from app.services.eval.article_generator import ArticleGenerator
 from app.services.eval.fact_set_builder import FactSetBuilder

@@ -13,15 +13,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 
-logger = logging.getLogger(__name__)
-
 from app.clients.backend_client import BackendClient
 from app.models.eval import BatchConfig, BatchResult
 from app.services.eval.article_generator import ArticleGenerator
+from app.services.eval.batch_orchestrator import BatchOrchestrator
 from app.services.eval.fact_extractor import FactExtractor
 from app.services.eval.fact_set_builder import FactSetBuilder
-from app.services.eval.batch_orchestrator import BatchOrchestrator
 from app.services.eval.perturbation_engine import PerturbationEngine
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
