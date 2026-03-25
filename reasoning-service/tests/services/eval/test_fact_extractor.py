@@ -335,7 +335,7 @@ class TestExtractJudgeFacts:
     async def test_extracts_court_and_level(
         self, extractor: FactExtractor, mock_client: AsyncMock
     ):
-        mock_client.get_all_judges.return_value = [_mock_judge()]
+        mock_client.get_judge.return_value = _mock_judge()
 
         result = await extractor.extract_judge_facts(JUDGE_ID)
 
@@ -348,7 +348,7 @@ class TestExtractJudgeFacts:
     async def test_extracts_appointing_president(
         self, extractor: FactExtractor, mock_client: AsyncMock
     ):
-        mock_client.get_all_judges.return_value = [_mock_judge()]
+        mock_client.get_judge.return_value = _mock_judge()
 
         result = await extractor.extract_judge_facts(JUDGE_ID)
 
@@ -360,7 +360,7 @@ class TestExtractJudgeFacts:
     async def test_extracts_confirmation_date(
         self, extractor: FactExtractor, mock_client: AsyncMock
     ):
-        mock_client.get_all_judges.return_value = [_mock_judge()]
+        mock_client.get_judge.return_value = _mock_judge()
 
         result = await extractor.extract_judge_facts(JUDGE_ID)
 
@@ -372,7 +372,7 @@ class TestExtractJudgeFacts:
     async def test_returns_none_for_missing_judge(
         self, extractor: FactExtractor, mock_client: AsyncMock
     ):
-        mock_client.get_all_judges.return_value = []
+        mock_client.get_judge.return_value = None
 
         result = await extractor.extract_judge_facts("nonexistent-id")
         assert result is None
@@ -381,7 +381,7 @@ class TestExtractJudgeFacts:
     async def test_all_facts_have_data_source(
         self, extractor: FactExtractor, mock_client: AsyncMock
     ):
-        mock_client.get_all_judges.return_value = [_mock_judge()]
+        mock_client.get_judge.return_value = _mock_judge()
 
         result = await extractor.extract_judge_facts(JUDGE_ID)
 
