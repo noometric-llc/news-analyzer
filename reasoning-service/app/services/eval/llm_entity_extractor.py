@@ -103,7 +103,8 @@ class LLMEntityExtractor:
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
-        response_text = response.content[0].text
+        content_block = response.content[0]
+        response_text = content_block.text  # type: ignore[union-attr]
 
         # Rate limiting
         await asyncio.sleep(60 / settings.eval_rate_limit_rpm)

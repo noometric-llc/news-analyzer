@@ -83,7 +83,8 @@ class ArticleGenerator:
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.content[0].text
+        content_block = response.content[0]
+        text = content_block.text  # type: ignore[union-attr]
         tokens = response.usage.input_tokens + response.usage.output_tokens
 
         # Rate limiting — sleep between calls
