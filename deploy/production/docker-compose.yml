@@ -38,6 +38,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REASONING_SERVICE_URL=http://reasoning-service:8000
       - CONGRESS_API_KEY=${CONGRESS_API_KEY}
+      # Flyway baseline — allows restore from pg_dump without migration history
+      - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
       # OpenTelemetry configuration (OBS-1.2)
       - OTEL_SERVICE_NAME=newsanalyzer-backend
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
