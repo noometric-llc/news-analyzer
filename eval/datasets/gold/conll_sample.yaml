@@ -1,0 +1,721 @@
+# Gold Dataset: CoNLL-2003 Sanity Check Sample
+# Schema: See legislative.yaml header for full schema reference.
+# Source: CoNLL-2003 shared task test set (Reuters newswire, public domain)
+# Purpose: External validation - proves scorer works on a known NER benchmark
+# Entity type mapping: PER=person, ORG=organization, LOC=location, MISC=concept
+
+- vars:
+    article_text: Peter Blackburn BRUSSELS 1996-08-22 The European Commission said on Thursday it disagreed with German advice
+      to consumers to shun British lamb.
+    entities:
+    - text: Peter Blackburn
+      type: person
+      start: 0
+      end: 15
+    - text: BRUSSELS
+      type: location
+      start: 16
+      end: 24
+    - text: European Commission
+      type: organization
+      start: 40
+      end: 59
+    - text: German
+      type: concept
+      start: 95
+      end: 101
+    - text: British
+      type: concept
+      start: 130
+      end: 137
+    metadata:
+      id: eval-2-conll-001
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Germany's representative to the European Union's veterinary committee Werner Zwingmann said on Wednesday
+      consumers should buy sheepmeat from countries other than Britain.
+    entities:
+    - text: Germany
+      type: location
+      start: 0
+      end: 7
+    - text: European Union
+      type: organization
+      start: 32
+      end: 46
+    - text: Werner Zwingmann
+      type: person
+      start: 70
+      end: 86
+    - text: Britain
+      type: location
+      start: 162
+      end: 169
+    metadata:
+      id: eval-2-conll-002
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: SOCCER - JAPAN GET LUCKY WIN, CHINA IN SURPRISE DEFEAT.
+    entities:
+    - text: JAPAN
+      type: location
+      start: 9
+      end: 14
+    - text: CHINA
+      type: location
+      start: 30
+      end: 35
+    metadata:
+      id: eval-2-conll-003
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: easy
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Nadim Ladki AL-AIN, United Arab Emirates 1996-12-06 South Korea and Japan qualified for the finals of the
+      Asian Cup on Friday.
+    entities:
+    - text: Nadim Ladki
+      type: person
+      start: 0
+      end: 11
+    - text: AL-AIN
+      type: location
+      start: 12
+      end: 18
+    - text: United Arab Emirates
+      type: location
+      start: 20
+      end: 40
+    - text: South Korea
+      type: location
+      start: 52
+      end: 63
+    - text: Japan
+      type: location
+      start: 68
+      end: 73
+    - text: Asian Cup
+      type: concept
+      start: 106
+      end: 115
+    metadata:
+      id: eval-2-conll-004
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: The United Nations Security Council on Friday passed a resolution calling on Israel to stop building settlements
+      in East Jerusalem and the rest of the occupied territories.
+    entities:
+    - text: United Nations Security Council
+      type: organization
+      start: 4
+      end: 35
+    - text: Israel
+      type: location
+      start: 77
+      end: 83
+    - text: East Jerusalem
+      type: location
+      start: 116
+      end: 130
+    metadata:
+      id: eval-2-conll-005
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Microsoft Corp. said on Tuesday it would acquire LinkedIn Corp. for $26.2 billion, the largest deal in the
+      technology company's history.
+    entities:
+    - text: Microsoft Corp.
+      type: organization
+      start: 0
+      end: 15
+    - text: LinkedIn Corp.
+      type: organization
+      start: 49
+      end: 63
+    metadata:
+      id: eval-2-conll-006
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: easy
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: CRICKET - LEICESTERSHIRE TAKE OVER AT TOP AFTER INNINGS VICTORY.
+    entities:
+    - text: LEICESTERSHIRE
+      type: organization
+      start: 10
+      end: 24
+    metadata:
+      id: eval-2-conll-007
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: hard
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: President Bill Clinton arrived in Paris on Monday for talks with French President Jacques Chirac on NATO
+      expansion and European security.
+    entities:
+    - text: Bill Clinton
+      type: person
+      start: 10
+      end: 22
+    - text: Paris
+      type: location
+      start: 34
+      end: 39
+    - text: French
+      type: concept
+      start: 65
+      end: 71
+    - text: Jacques Chirac
+      type: person
+      start: 82
+      end: 96
+    - text: NATO
+      type: organization
+      start: 100
+      end: 104
+    - text: European
+      type: concept
+      start: 119
+      end: 127
+    metadata:
+      id: eval-2-conll-008
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: TENNIS - RESULTS AT THE CANADIAN OPEN IN MONTREAL.
+    entities:
+    - text: CANADIAN OPEN
+      type: concept
+      start: 24
+      end: 37
+    - text: MONTREAL
+      type: location
+      start: 41
+      end: 49
+    metadata:
+      id: eval-2-conll-009
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: British Foreign Secretary Malcolm Rifkind said on Tuesday that ties between London and Tehran could only
+      improve once Iran changed its behavior.
+    entities:
+    - text: British
+      type: concept
+      start: 0
+      end: 7
+    - text: Malcolm Rifkind
+      type: person
+      start: 26
+      end: 41
+    - text: London
+      type: location
+      start: 76
+      end: 82
+    - text: Tehran
+      type: location
+      start: 87
+      end: 93
+    - text: Iran
+      type: location
+      start: 118
+      end: 122
+    metadata:
+      id: eval-2-conll-010
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: The Chicago Bulls defeated the Utah Jazz 90-88 in Game 6 of the NBA Finals on Sunday.
+    entities:
+    - text: Chicago Bulls
+      type: organization
+      start: 4
+      end: 17
+    - text: Utah Jazz
+      type: organization
+      start: 31
+      end: 40
+    - text: NBA
+      type: organization
+      start: 64
+      end: 67
+    metadata:
+      id: eval-2-conll-011
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Australian fast bowler Shane Warne took five wickets as England collapsed to 129 all out in the second innings
+      at Lord's.
+    entities:
+    - text: Australian
+      type: concept
+      start: 0
+      end: 10
+    - text: Shane Warne
+      type: person
+      start: 23
+      end: 34
+    - text: England
+      type: location
+      start: 56
+      end: 63
+    - text: Lord's
+      type: location
+      start: 114
+      end: 120
+    metadata:
+      id: eval-2-conll-012
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Russian President Boris Yeltsin flew to Norway on Monday for a two-day state visit.
+    entities:
+    - text: Russian
+      type: concept
+      start: 0
+      end: 7
+    - text: Boris Yeltsin
+      type: person
+      start: 18
+      end: 31
+    - text: Norway
+      type: location
+      start: 40
+      end: 46
+    metadata:
+      id: eval-2-conll-013
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: easy
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Goldman Sachs Group Inc. reported record quarterly earnings on Tuesday, beating expectations from Wall Street
+      analysts.
+    entities:
+    - text: Goldman Sachs Group Inc.
+      type: organization
+      start: 0
+      end: 24
+    - text: Wall Street
+      type: location
+      start: 98
+      end: 109
+    metadata:
+      id: eval-2-conll-014
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: BASEBALL - SEATTLE MARINERS BEAT NEW YORK YANKEES 5-3.
+    entities:
+    - text: SEATTLE MARINERS
+      type: organization
+      start: 11
+      end: 27
+    - text: NEW YORK YANKEES
+      type: organization
+      start: 33
+      end: 49
+    metadata:
+      id: eval-2-conll-015
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: easy
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Italian Prime Minister Romano Prodi said on Wednesday that Italy would meet the criteria for joining Europe's
+      single currency.
+    entities:
+    - text: Italian
+      type: concept
+      start: 0
+      end: 7
+    - text: Romano Prodi
+      type: person
+      start: 23
+      end: 35
+    - text: Italy
+      type: location
+      start: 59
+      end: 64
+    - text: Europe
+      type: location
+      start: 101
+      end: 107
+    metadata:
+      id: eval-2-conll-016
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: The International Monetary Fund warned on Thursday that the global economy faces significant risks from
+      trade tensions between the United States and China.
+    entities:
+    - text: International Monetary Fund
+      type: organization
+      start: 4
+      end: 31
+    - text: United States
+      type: location
+      start: 131
+      end: 144
+    - text: China
+      type: location
+      start: 149
+      end: 154
+    metadata:
+      id: eval-2-conll-017
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: easy
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Former South African President Nelson Mandela celebrated his 80th birthday at a ceremony in Johannesburg
+      attended by world leaders.
+    entities:
+    - text: South African
+      type: concept
+      start: 7
+      end: 20
+    - text: Nelson Mandela
+      type: person
+      start: 31
+      end: 45
+    - text: Johannesburg
+      type: location
+      start: 92
+      end: 104
+    metadata:
+      id: eval-2-conll-018
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: easy
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Toyota Motor Corp. plans to invest $1.3 billion in its Kentucky manufacturing plant, the Japanese automaker
+      said on Friday.
+    entities:
+    - text: Toyota Motor Corp.
+      type: organization
+      start: 0
+      end: 18
+    - text: Kentucky
+      type: location
+      start: 55
+      end: 63
+    - text: Japanese
+      type: concept
+      start: 89
+      end: 97
+    metadata:
+      id: eval-2-conll-019
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: SOCCER - REAL MADRID BEAT BARCELONA 3-1 IN SPANISH LEAGUE.
+    entities:
+    - text: REAL MADRID
+      type: organization
+      start: 9
+      end: 20
+    - text: BARCELONA
+      type: organization
+      start: 26
+      end: 35
+    - text: SPANISH LEAGUE
+      type: concept
+      start: 43
+      end: 57
+    metadata:
+      id: eval-2-conll-020
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: German Chancellor Helmut Kohl met with U.S. Secretary of State Madeleine Albright in Bonn on Tuesday to
+      discuss NATO enlargement.
+    entities:
+    - text: German
+      type: concept
+      start: 0
+      end: 6
+    - text: Helmut Kohl
+      type: person
+      start: 18
+      end: 29
+    - text: U.S.
+      type: location
+      start: 39
+      end: 43
+    - text: Madeleine Albright
+      type: person
+      start: 63
+      end: 81
+    - text: Bonn
+      type: location
+      start: 85
+      end: 89
+    - text: NATO
+      type: organization
+      start: 112
+      end: 116
+    metadata:
+      id: eval-2-conll-021
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: The World Health Organization declared the Ebola outbreak in the Democratic Republic of Congo a public health
+      emergency on Wednesday.
+    entities:
+    - text: World Health Organization
+      type: organization
+      start: 4
+      end: 29
+    - text: Democratic Republic of Congo
+      type: location
+      start: 65
+      end: 93
+    metadata:
+      id: eval-2-conll-022
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Brazilian striker Ronaldo scored twice as Inter Milan beat Lazio 3-0 in the Italian Serie A on Saturday.
+    entities:
+    - text: Brazilian
+      type: concept
+      start: 0
+      end: 9
+    - text: Ronaldo
+      type: person
+      start: 18
+      end: 25
+    - text: Inter Milan
+      type: organization
+      start: 42
+      end: 53
+    - text: Lazio
+      type: organization
+      start: 59
+      end: 64
+    - text: Italian
+      type: concept
+      start: 76
+      end: 83
+    - text: Serie A
+      type: concept
+      start: 84
+      end: 91
+    metadata:
+      id: eval-2-conll-023
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: hard
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: Japanese Finance Minister Kiichi Miyazawa told reporters in Tokyo that the Bank of Japan would maintain
+      its current monetary policy.
+    entities:
+    - text: Japanese
+      type: concept
+      start: 0
+      end: 8
+    - text: Kiichi Miyazawa
+      type: person
+      start: 26
+      end: 41
+    - text: Tokyo
+      type: location
+      start: 60
+      end: 65
+    - text: Bank of Japan
+      type: organization
+      start: 75
+      end: 88
+    metadata:
+      id: eval-2-conll-024
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'
+- vars:
+    article_text: The Federal Reserve raised interest rates by a quarter point on Wednesday, Chairman Alan Greenspan said
+      in a statement issued from Washington.
+    entities:
+    - text: Federal Reserve
+      type: organization
+      start: 4
+      end: 19
+    - text: Alan Greenspan
+      type: person
+      start: 84
+      end: 98
+    - text: Washington
+      type: location
+      start: 131
+      end: 141
+    metadata:
+      id: eval-2-conll-025
+      article_id: null
+      article_type: news_report
+      branch: null
+      source: conll
+      perturbation_type: none
+      difficulty: medium
+      fact_count: 0
+      curated: true
+      curated_date: '2026-03-23'

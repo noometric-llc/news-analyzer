@@ -1,0 +1,85 @@
+{
+  "generated": "2026-03-25",
+  "branches": {
+    "judicial": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.192,
+        "recall": 0.925,
+        "f1": 0.318,
+        "true_positives": 74.0,
+        "false_positives": 311.0,
+        "false_negatives": 6.0,
+        "article_count": 15
+      },
+      "Claude Sonnet": {
+        "precision": 0.456,
+        "recall": 0.938,
+        "f1": 0.614,
+        "true_positives": 75.5,
+        "false_positives": 90.0,
+        "false_negatives": 5.0,
+        "article_count": 15
+      }
+    },
+    "executive": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.22,
+        "recall": 0.983,
+        "f1": 0.359,
+        "true_positives": 114.5,
+        "false_positives": 406.0,
+        "false_negatives": 2.0,
+        "article_count": 20
+      },
+      "Claude Sonnet": {
+        "precision": 0.432,
+        "recall": 1.0,
+        "f1": 0.603,
+        "true_positives": 123.0,
+        "false_positives": 162.0,
+        "false_negatives": 0.0,
+        "article_count": 20
+      }
+    },
+    "legislative": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.151,
+        "recall": 0.963,
+        "f1": 0.261,
+        "true_positives": 288.0,
+        "false_positives": 1620.0,
+        "false_negatives": 11.0,
+        "article_count": 53
+      },
+      "Claude Sonnet": {
+        "precision": 0.426,
+        "recall": 0.977,
+        "f1": 0.593,
+        "true_positives": 296.0,
+        "false_positives": 399.0,
+        "false_negatives": 7.0,
+        "article_count": 53
+      }
+    },
+    "conll": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.96,
+        "recall": 0.856,
+        "f1": 0.905,
+        "true_positives": 71.5,
+        "false_positives": 3.0,
+        "false_negatives": 12.0,
+        "article_count": 25
+      },
+      "Claude Sonnet": {
+        "precision": 0.789,
+        "recall": 0.963,
+        "f1": 0.867,
+        "true_positives": 78.5,
+        "false_positives": 21.0,
+        "false_negatives": 3.0,
+        "article_count": 25
+      }
+    }
+  }
+}

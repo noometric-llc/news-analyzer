@@ -74,7 +74,8 @@ frontend/Thumbs.db
 # ============================================================================
 # PYTHON SERVICE
 # ============================================================================
-reasoning-service/__pycache__/
+__pycache__/
+*.pyc
 reasoning-service/*.py[cod]
 reasoning-service/*$py.class
 reasoning-service/.Python
@@ -104,12 +105,16 @@ eval/node_modules/
 eval/reports/*
 !eval/reports/.gitkeep
 !eval/reports/baseline/
+eval/reports/baseline/*.json
+eval/reports/baseline/*.html
+!eval/reports/baseline/summary.json
 
 # ============================================================================
 # DOCKER & DEPLOYMENT
 # ============================================================================
 *.log
 docker-compose.override.yml
+deploy/data/*.dump
 
 # Persistent data volumes (should NOT be in Git)
 postgres_data/

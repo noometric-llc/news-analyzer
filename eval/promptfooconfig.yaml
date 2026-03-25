@@ -1,0 +1,45 @@
+# NewsAnalyzer Entity Extraction Evaluation Harness
+# EVAL-2.3: Promptfoo configuration for side-by-side spaCy vs Claude comparison
+#
+# Usage:
+#   npm run eval              — run default (legislative) dataset
+#   npm run eval:all          — run all gold datasets
+#   npm run eval:view         — open results dashboard
+#
+# Prerequisites:
+#   1. reasoning-service running on localhost:8000
+#   2. ANTHROPIC_API_KEY set in reasoning-service .env
+#   3. PROMPTFOO_PYTHON pointing to the newsanalyzer conda env Python
+
+description: "NewsAnalyzer Entity Extraction Evaluation"
+
+prompts:
+  - "{{article_text}}"
+
+providers:
+  - id: "file://providers/spacy_provider.py"
+    label: "spaCy en_core_web_sm"
+
+  - id: "file://providers/llm_provider.py"
+    label: "Claude Sonnet"
+    config:
+      model: "claude-sonnet-4-20250514"
+
+tests: "datasets/gold/legislative.yaml"
+
+defaultTest:
+  assert:
+    - type: "python"
+      value: "file://assertions/entity_scorer.py"
+
+derivedMetrics:
+  - name: "Precision"
+    value: "true_positives / (true_positives + false_positives)"
+  - name: "Recall"
+    value: "true_positives / (true_positives + false_negatives)"
+  - name: "F1"
+    value: "2 * true_positives / (2 * true_positives + false_positives + false_negatives)"
+
+outputPath:
+  - "reports/results.json"
+  - "reports/results.html"

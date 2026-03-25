@@ -1,0 +1,79 @@
+name: Evaluation Harness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'eval/**'
+      - 'reasoning-service/app/services/eval/**'
+      - 'reasoning-service/app/api/eval/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'eval/**'
+      - 'reasoning-service/app/services/eval/**'
+      - 'reasoning-service/app/api/eval/**'
+
+jobs:
+  scorer-tests:
+    name: Scorer Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install reasoning-service dependencies
+        working-directory: reasoning-service
+        run: pip install -r requirements.txt
+
+      - name: Run scorer tests
+        working-directory: eval/assertions
+        run: python -m pytest test_entity_scorer.py -v
+
+      - name: Run derivation script tests
+        run: python -m pytest eval/datasets/scripts/test_derive_gold.py -v
+
+  extractor-tests:
+    name: LLM Extractor Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install reasoning-service dependencies
+        working-directory: reasoning-service
+        run: pip install -r requirements.txt
+
+      - name: Run extractor tests
+        working-directory: reasoning-service
+        run: |
+          python -m pytest tests/services/eval/test_llm_entity_extractor.py -v
+          python -m pytest tests/api/eval/test_extraction_api.py -v
+
+  gold-dataset-validation:
+    name: Gold Dataset Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate gold dataset
+        run: python eval/datasets/scripts/validate_gold.py

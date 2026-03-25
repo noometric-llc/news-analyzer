@@ -2,7 +2,7 @@
 
 **Document Version:** 4.5
 **Created:** 2025-11-25
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-03-25
 **Status:** Active
 
 ---
@@ -77,10 +77,13 @@ NewsAnalyzer v2 is a complete redesign from v1's failed architecture, implementi
 | Epic | Status | Progress | Description |
 |------|--------|----------|-------------|
 | **EVAL-1** | Complete | 100% | KB Fact Extraction & Synthetic Article Generator |
-| **EVAL-2** | Planned | 0% | Entity Extraction Evaluation Harness (Promptfoo + Precision/Recall/F1) |
+| **EVAL-2** | Complete | 100% | Entity Extraction Evaluation Harness (Promptfoo + Precision/Recall/F1) |
+| **EVAL-DASH** | In Progress | 0% | AI Evaluation Portfolio Dashboard (surfaces EVAL-1/EVAL-2 work in frontend) |
 | **EVAL-3** | Planned | 0% | Cognitive Bias & Logical Fallacy Evaluation via Ontology |
 
-> **EVAL-2 Note:** Build an entity extraction evaluation harness measuring precision/recall/F1 against a gold dataset derived from EVAL-1's synthetic articles. Integrates Promptfoo for industry-standard eval tooling, prompt regression testing, and model comparison. Highest portfolio ROI for AI Evaluation Engineer roles — directly demonstrates evaluation methodology, metrics design, and eval tooling proficiency. Re-sequenced on 2026-03-19 to prioritize demonstrable eval skills ahead of ontology work.
+> **EVAL-2 Note:** ~~Build an entity extraction evaluation harness...~~ **COMPLETE (2026-03-25).** Gold dataset (64 curated articles + 25 CoNLL), dual-extractor comparison (spaCy vs Claude), Promptfoo harness with fuzzy-matching scorer, 104 pytest tests. Key result: Claude F1=0.60 vs spaCy F1=0.31 on government articles; spaCy wins on general newswire (0.91 vs 0.87).
+>
+> **EVAL-DASH Note:** Frontend dashboard surfacing EVAL-1/EVAL-2 work for portfolio visibility. Currently all evaluation artifacts are backend-only — invisible to site visitors. This epic adds an `/evaluation` section with model comparison charts, dataset explorer, and a polished methodology page (the URL to send recruiters). 5 stories (~1-1.5 weeks), 4 required + 1 stretch. Prioritized on 2026-03-25 for immediate job search impact.
 >
 > **EVAL-3 Note:** Extends the OWL ontology with academically-grounded cognitive bias and logical fallacy definitions. LLM evaluation prompts are grounded in SPARQL-retrieved definitions rather than relying on the model's internal training knowledge — making analysis auditable and traceable to cited academic sources. Builds on EVAL-2's evaluation framework. Concept originated from architecture discussion on 2026-03-16.
 
