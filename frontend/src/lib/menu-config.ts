@@ -15,6 +15,9 @@ import {
   Users2,
   Gavel,
   MapPin,
+  FlaskConical,
+  BarChart3,
+  GitCompare,
 } from 'lucide-react';
 import { MenuItemData } from '@/components/sidebar/types';
 
@@ -166,5 +169,37 @@ export const articleAnalyzerMenuItems: MenuItemData[] = [
     label: 'Entities',
     icon: Database,
     href: '/article-analyzer/entities',
+  },
+];
+
+/**
+ * AI Evaluation sidebar menu configuration.
+ * Matches the routes in /evaluation section.
+ */
+export const evaluationMenuItems: MenuItemData[] = [
+  {
+    label: 'Overview',
+    icon: FlaskConical,
+    href: '/evaluation',
+  },
+  {
+    label: 'Results',
+    icon: BarChart3,
+    href: '/evaluation/results',
+  },
+  {
+    label: 'Dataset Explorer',
+    icon: Database,
+    href: '/evaluation/datasets',
+  },
+  {
+    label: 'Methodology',
+    icon: BookOpen,
+    href: '/evaluation/methodology',
+  },
+  {
+    label: 'Live Compare',
+    icon: GitCompare,
+    href: '/evaluation/compare',
   },
 ];

@@ -25,6 +25,12 @@ export default function Home() {
           >
             Article Analyzer
           </Link>
+          <Link
+            href="/evaluation"
+            className="px-8 py-4 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold text-lg shadow-lg transition-all hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            AI Evaluation
+          </Link>
         </div>
 
         {/* Quick Links - Updated to new routes */}
@@ -52,6 +58,12 @@ export default function Home() {
             className="px-4 py-2 text-sm bg-muted hover:bg-muted/80 rounded-md transition-colors"
           >
             Extracted Entities
+          </Link>
+          <Link
+            href="/evaluation/results"
+            className="px-4 py-2 text-sm bg-muted hover:bg-muted/80 rounded-md transition-colors"
+          >
+            Evaluation Results
           </Link>
         </div>
 

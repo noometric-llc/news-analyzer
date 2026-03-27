@@ -15,7 +15,7 @@ describe('Home Page', () => {
     });
   });
 
-  describe('Primary Navigation (Dual CTAs)', () => {
+  describe('Primary Navigation CTAs', () => {
     it('renders Knowledge Base button', () => {
       render(<Home />);
       const kbLink = screen.getByRole('link', { name: /explore knowledge base/i });
@@ -30,23 +30,34 @@ describe('Home Page', () => {
       expect(aaLink).toHaveAttribute('href', '/article-analyzer');
     });
 
-    it('both primary buttons have equal visual weight', () => {
+    it('renders AI Evaluation button', () => {
+      render(<Home />);
+      const evalLink = screen.getByRole('link', { name: /ai evaluation/i });
+      expect(evalLink).toBeInTheDocument();
+      expect(evalLink).toHaveAttribute('href', '/evaluation');
+    });
+
+    it('all primary buttons have equal visual weight', () => {
       render(<Home />);
       const kbLink = screen.getByRole('link', { name: /explore knowledge base/i });
       const aaLink = screen.getByRole('link', { name: /article analyzer/i });
+      const evalLink = screen.getByRole('link', { name: /ai evaluation/i });
 
-      // Both should have the same primary styling
+      // All should have the same primary styling
       expect(kbLink).toHaveClass('bg-primary');
       expect(aaLink).toHaveClass('bg-primary');
+      expect(evalLink).toHaveClass('bg-primary');
     });
 
     it('primary buttons have focus-visible styles for accessibility', () => {
       render(<Home />);
       const kbLink = screen.getByRole('link', { name: /explore knowledge base/i });
       const aaLink = screen.getByRole('link', { name: /article analyzer/i });
+      const evalLink = screen.getByRole('link', { name: /ai evaluation/i });
 
       expect(kbLink).toHaveClass('focus-visible:ring-2');
       expect(aaLink).toHaveClass('focus-visible:ring-2');
+      expect(evalLink).toHaveClass('focus-visible:ring-2');
     });
   });
 
@@ -77,6 +88,13 @@ describe('Home Page', () => {
       const link = screen.getByRole('link', { name: /extracted entities/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute('href', '/article-analyzer/entities');
+    });
+
+    it('renders Evaluation Results link', () => {
+      render(<Home />);
+      const link = screen.getByRole('link', { name: /evaluation results/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/evaluation/results');
     });
 
     it('all quick links point to valid routes', () => {
@@ -172,7 +190,7 @@ describe('Home Page', () => {
       render(<Home />);
       const links = screen.getAllByRole('link');
 
-      const validPrefixes = ['/knowledge-base', '/article-analyzer'];
+      const validPrefixes = ['/knowledge-base', '/article-analyzer', '/evaluation'];
 
       links.forEach((link) => {
         const href = link.getAttribute('href');
