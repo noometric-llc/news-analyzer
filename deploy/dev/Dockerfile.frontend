@@ -2,11 +2,14 @@
 # Next.js dev server with hot module replacement
 FROM node:20-alpine
 
+# Enable pnpm via corepack (ships with Node 20+)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 # Copy package files and install dependencies (cached layer)
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # Copy config files needed at runtime (not volume-mounted)
 COPY tsconfig.json next.config.js ./
@@ -22,4 +25,4 @@ EXPOSE 3000
 # when experimentalInstrumentationHook is enabled. Create a stub so the server can start;
 # Next.js HMR will replace it with the real compiled file on first load.
 # Fixed upstream in Next.js 14.2.0 — remove this workaround when upgrading.
-CMD ["sh", "-c", "mkdir -p .next/server && touch .next/server/instrumentation.js && npm run dev"]
+CMD ["sh", "-c", "mkdir -p .next/server && touch .next/server/instrumentation.js && pnpm run dev"]

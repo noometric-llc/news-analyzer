@@ -1,12 +1,15 @@
 FROM node:20-alpine AS builder
 
+# Enable pnpm via corepack (ships with Node 20+)
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -15,7 +18,7 @@ COPY . .
 RUN mkdir -p public
 
 # Build the application
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM node:20-alpine AS runner
