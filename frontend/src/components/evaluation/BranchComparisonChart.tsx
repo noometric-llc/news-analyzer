@@ -87,16 +87,13 @@ export function BranchComparisonChart({ data, selectedBranch }: BranchComparison
         <BarChart data={chartData} barGap={4} barCategoryGap="20%">
           <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
           <XAxis dataKey="branch" tick={{ fontSize: 13 }} />
-          <YAxis domain={[0, 1]} tick={{ fontSize: 12 }} tickFormatter={(v) => v.toFixed(1)} />
+          <YAxis domain={[0, 1]} tick={{ fontSize: 12 }} tickFormatter={(v: number) => v.toFixed(1)} />
           <Tooltip
-            formatter={(value: number, name: string) => [
-              value.toFixed(3),
-              name === 'claude' ? EXTRACTOR_NAMES.claude : EXTRACTOR_NAMES.spacy,
-            ]}
-            labelFormatter={(label) => `Branch: ${label}`}
+            formatter={((value: number) => value.toFixed(3)) as any}
+            labelFormatter={((label: string) => `Branch: ${label}`) as any}
           />
           <Legend
-            formatter={(value) =>
+            formatter={(value: string) =>
               value === 'claude' ? EXTRACTOR_NAMES.claude : EXTRACTOR_NAMES.spacy
             }
           />

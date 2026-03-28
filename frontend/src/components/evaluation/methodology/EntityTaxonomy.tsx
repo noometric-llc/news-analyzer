@@ -1,11 +1,11 @@
 import {
   User, Building, Building2, MapPin, Calendar, Lightbulb, FileText,
 } from 'lucide-react';
-import type { ComponentType } from 'react';
+import type { ComponentType, CSSProperties } from 'react';
 import { ENTITY_TAXONOMY } from '@/lib/data/methodology';
 import { ENTITY_TYPE_COLORS } from '@/lib/utils/evaluation';
 
-const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
+const ICON_MAP: Record<string, ComponentType<{ className?: string; style?: CSSProperties }>> = {
   User, Building, Building2, MapPin, Calendar, Lightbulb, FileText,
 };
 

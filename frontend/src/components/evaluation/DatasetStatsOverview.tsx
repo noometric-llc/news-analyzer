@@ -92,7 +92,7 @@ export function DatasetStatsOverview({ stats }: DatasetStatsOverviewProps) {
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label={({ name, value }) => `${name} (${value})`}
+                label={({ name, value }: { name?: string; value?: number }) => `${name ?? ''} (${value ?? 0})`}
                 labelLine={false}
               >
                 {branchData.map((entry) => (

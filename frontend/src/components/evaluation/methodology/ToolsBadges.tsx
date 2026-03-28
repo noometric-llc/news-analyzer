@@ -16,7 +16,7 @@ const CATEGORY_COLORS: Record<string, string> = {
  */
 export function ToolsBadges() {
   // Group tools by category
-  const grouped = TOOLS_USED.reduce<Record<string, typeof TOOLS_USED>>((acc, tool) => {
+  const grouped = TOOLS_USED.reduce<Record<string, Array<typeof TOOLS_USED[number]>>>((acc, tool) => {
     const key = tool.category;
     if (!acc[key]) acc[key] = [];
     acc[key].push(tool);
