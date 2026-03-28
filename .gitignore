@@ -98,6 +98,8 @@ reasoning-service/.mypy_cache/
 # Entity reference DB (should be versioned separately or downloaded)
 reasoning-service/entity_reference.db
 
+
+
 # ============================================================================
 # EVALUATION HARNESS
 # ============================================================================
