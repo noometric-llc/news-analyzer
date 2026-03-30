@@ -1,0 +1,99 @@
+{
+  "branch": "executive",
+  "extractors": {
+    "spaCy en_core_web_sm": {
+      "overall": {
+        "precision": 0.21998078770413065,
+        "recall": 0.9828326180257511,
+        "f1": 0.35949764521193095,
+        "true_positives": 114.5,
+        "false_positives": 406,
+        "false_negatives": 2
+      },
+      "byEntityType": {
+        "person": {
+          "tp": 60,
+          "fp": 147,
+          "fn": 0
+        },
+        "government_org": {
+          "tp": 1.5,
+          "fp": 1,
+          "fn": 1
+        },
+        "organization": {
+          "tp": 14,
+          "fp": 87,
+          "fn": 0
+        },
+        "location": {
+          "tp": 23,
+          "fp": 57,
+          "fn": 0
+        },
+        "event": {
+          "tp": 2,
+          "fp": 7,
+          "fn": 0
+        },
+        "concept": {
+          "tp": 14,
+          "fp": 107,
+          "fn": 1
+        },
+        "legislation": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      }
+    },
+    "Claude Sonnet": {
+      "overall": {
+        "precision": 0.43157894736842106,
+        "recall": 1,
+        "f1": 0.6029411764705882,
+        "true_positives": 123,
+        "false_positives": 162,
+        "false_negatives": 0
+      },
+      "byEntityType": {
+        "person": {
+          "tp": 62,
+          "fp": 44,
+          "fn": 0
+        },
+        "government_org": {
+          "tp": 5,
+          "fp": 23,
+          "fn": 0
+        },
+        "organization": {
+          "tp": 7.5,
+          "fp": 8,
+          "fn": 0
+        },
+        "location": {
+          "tp": 24,
+          "fp": 24,
+          "fn": 0
+        },
+        "event": {
+          "tp": 2.5,
+          "fp": 7,
+          "fn": 0
+        },
+        "concept": {
+          "tp": 22,
+          "fp": 56,
+          "fn": 0
+        },
+        "legislation": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0
+        }
+      }
+    }
+  }
+}

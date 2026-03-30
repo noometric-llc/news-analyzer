@@ -107,6 +107,7 @@ eval/node_modules/
 eval/reports/*
 !eval/reports/.gitkeep
 !eval/reports/baseline/
+!eval/reports/build-api-json.js
 eval/reports/baseline/*.html
 
 # ============================================================================

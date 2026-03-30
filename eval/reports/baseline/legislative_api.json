@@ -1,0 +1,99 @@
+{
+  "branch": "legislative",
+  "extractors": {
+    "spaCy en_core_web_sm": {
+      "overall": {
+        "precision": 0.1509433962264151,
+        "recall": 0.9632107023411371,
+        "f1": 0.2609877661984594,
+        "true_positives": 288,
+        "false_positives": 1620,
+        "false_negatives": 11
+      },
+      "byEntityType": {
+        "person": {
+          "tp": 51,
+          "fp": 203,
+          "fn": 0
+        },
+        "government_org": {
+          "tp": 106,
+          "fp": 476,
+          "fn": 0
+        },
+        "organization": {
+          "tp": 5,
+          "fp": 145,
+          "fn": 0
+        },
+        "location": {
+          "tp": 75,
+          "fp": 488,
+          "fn": 10
+        },
+        "event": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 1
+        },
+        "concept": {
+          "tp": 51,
+          "fp": 301,
+          "fn": 0
+        },
+        "legislation": {
+          "tp": 0,
+          "fp": 3,
+          "fn": 0
+        }
+      }
+    },
+    "Claude Sonnet": {
+      "overall": {
+        "precision": 0.42589928057553955,
+        "recall": 0.976897689768977,
+        "f1": 0.593186372745491,
+        "true_positives": 296,
+        "false_positives": 399,
+        "false_negatives": 7
+      },
+      "byEntityType": {
+        "person": {
+          "tp": 53,
+          "fp": 41,
+          "fn": 0
+        },
+        "government_org": {
+          "tp": 103,
+          "fp": 110,
+          "fn": 0
+        },
+        "organization": {
+          "tp": 0.5,
+          "fp": 15,
+          "fn": 0
+        },
+        "location": {
+          "tp": 85,
+          "fp": 116,
+          "fn": 7
+        },
+        "event": {
+          "tp": 1,
+          "fp": 3,
+          "fn": 0
+        },
+        "concept": {
+          "tp": 53.5,
+          "fp": 111,
+          "fn": 0
+        },
+        "legislation": {
+          "tp": 0,
+          "fp": 3,
+          "fn": 0
+        }
+      }
+    }
+  }
+}
