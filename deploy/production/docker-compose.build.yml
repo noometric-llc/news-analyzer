@@ -68,6 +68,8 @@ services:
       dockerfile: Dockerfile
     container_name: newsanalyzer-frontend
     restart: unless-stopped
+    volumes:
+      - ../../eval/reports:/eval/reports:ro
     environment:
       - NODE_ENV=production
       # Server-side rewrite target — used by next.config.js rewrites() at runtime
