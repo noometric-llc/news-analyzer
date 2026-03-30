@@ -74,6 +74,8 @@ services:
       - NODE_ENV=production
       # Server-side rewrite target — used by next.config.js rewrites() at runtime
       - BACKEND_INTERNAL_URL=http://backend:8080
+      # Absolute path to eval report files (volume-mounted)
+      - EVAL_REPORTS_PATH=/eval/reports/baseline
     depends_on:
       - backend
     networks:

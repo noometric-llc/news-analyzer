@@ -55,14 +55,9 @@ export async function GET(
   }
 
   try {
-    const filePath = path.join(
-      process.cwd(),
-      '..',
-      'eval',
-      'reports',
-      'baseline',
-      `${branch}_results.json`
-    );
+    const baseDir = process.env.EVAL_REPORTS_PATH
+      || path.join(process.cwd(), '..', 'eval', 'reports', 'baseline');
+    const filePath = path.join(baseDir, `${branch}_results.json`);
     const raw = await readFile(filePath, 'utf-8');
     const data = JSON.parse(raw);
 
