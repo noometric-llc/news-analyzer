@@ -68,13 +68,13 @@ services:
     container_name: newsanalyzer-frontend
     restart: unless-stopped
     volumes:
-      - ../../eval/reports:/eval/reports:ro
+      - ../../eval/reports/baseline:/app/eval-reports:ro
     environment:
       - NODE_ENV=production
       # Server-side rewrite target — used by next.config.js rewrites() at runtime
       - BACKEND_INTERNAL_URL=http://backend:8080
-      # Absolute path to eval report files (volume-mounted)
-      - EVAL_REPORTS_PATH=/eval/reports/baseline
+      # Absolute path to eval report files (volume-mounted into /app)
+      - EVAL_REPORTS_PATH=/app/eval-reports
       # OpenTelemetry configuration (OBS-1.4)
       - OTEL_SERVICE_NAME=newsanalyzer-frontend
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
