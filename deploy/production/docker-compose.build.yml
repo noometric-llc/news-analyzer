@@ -15,6 +15,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - letsencrypt:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
+      - ../../eval/reports/baseline:/data/eval-reports:ro
     depends_on:
       - backend
       - frontend
@@ -68,14 +69,10 @@ services:
       dockerfile: Dockerfile
     container_name: newsanalyzer-frontend
     restart: unless-stopped
-    volumes:
-      - ../../eval/reports/baseline:/app/eval-reports:ro
     environment:
       - NODE_ENV=production
       # Server-side rewrite target — used by next.config.js rewrites() at runtime
       - BACKEND_INTERNAL_URL=http://backend:8080
-      # Absolute path to eval report files (volume-mounted into /app)
-      - EVAL_REPORTS_PATH=/app/eval-reports
       # Absolute path to eval report files (volume-mounted)
       - EVAL_REPORTS_PATH=/eval/reports/baseline
     depends_on:
