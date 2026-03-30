@@ -1,9 +1,10 @@
 # NewsAnalyzer v2
 
-**An independent, open-source platform for news analysis, fact-checking, and bias detection.**
+**AI evaluation, reliability, and observability infrastructure for production news analysis.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Architecture](https://img.shields.io/badge/Architecture-Documented-green.svg)](docs/architecture.md)
+[![Eval Pipeline](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/eval.yml/badge.svg)](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/eval.yml)
 [![API Tests](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/api-tests.yml/badge.svg)](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/api-tests.yml)
 [![Production](https://img.shields.io/badge/Production-Live-brightgreen.svg)](http://newsanalyzer.org)
 
@@ -11,14 +12,18 @@
 
 ## About This Project
 
-NewsAnalyzer is both a genuine civic technology project and a 
-demonstration of quality engineering practices across a polyglot 
-AI application stack.
+NewsAnalyzer is a production AI platform with a complete evaluation
+and reliability infrastructure — built to demonstrate how AI systems
+should be tested, measured, and monitored in production.
 
-The engineering decisions documented here — structured data modeling 
-for bias mitigation, OWL-based semantic reasoning, modular monolith 
-architecture, production observability — reflect real tradeoffs made 
-for real reasons, documented in the 
+The project includes a Promptfoo-based evaluation pipeline that
+compares extractors against a 113-article gold dataset with
+precision/recall/F1 scoring, full-stack observability with
+OpenTelemetry and Grafana, and 6 CI/CD pipelines with automated
+quality gates. Every engineering decision — structured data modeling
+for bias mitigation, OWL-based semantic reasoning, evaluation
+methodology — reflects real tradeoffs made for real reasons,
+documented in the
 [brownfield analysis](docs/newsanalyzer-brownfield-analysis.md).
 
 Built by [Steve Kosuth-Wood](https://www.linkedin.com/in/steve-kosuth-wood-532a909/)
@@ -41,17 +46,89 @@ For a news analysis platform, independence from major tech companies ensures unb
 
 ## 🎯 What It Does
 
-NewsAnalyzer extracts and analyzes entities from news articles with Schema.org support:
+### AI Evaluation & Reliability
+- **📊 Evaluation Pipeline** - Promptfoo harness comparing spaCy NER baseline vs. Claude LLM extraction with automated regression detection in CI/CD
+- **🗂️ Gold Dataset** - 113 curated articles (601 entities) across 4 domains with character-offset annotations and entity type validation
+- **📏 Scoring Methodology** - Precision/recall/F1 with 6-priority fuzzy matching (exact, substring, Levenshtein) and partial credit for type mismatches
+- **📈 Evaluation Dashboard** - Interactive model comparison, gold dataset explorer, and methodology documentation
+- **🔍 Observability** - OpenTelemetry auto-instrumentation across all 3 services, Grafana LGTM stack, distributed tracing, 6 pre-provisioned dashboards
+- **🚦 CI/CD Quality Gates** - 6 GitHub Actions workflows: per-service builds, cross-service API tests, evaluation pipeline, and production deployment
 
-- **👤 Entity Extraction** - People, organizations, locations, events from text (Phase 1 ✅)
-- **🏛️ Schema.org Integration** - Full JSON-LD structured data for all entities (Phase 1 ✅)
-- **📊 Smart Classification** - 9 entity types with automatic government detection (Phase 1 ✅)
-- **🎨 Interactive Visualization** - Real-time entity display with filtering (Phase 1 ✅)
-- **🧠 OWL Reasoning** - Semantic inference and entity classification (Phase 3 ✅)
-- **🔗 External Linking** - Wikidata, DBpedia integration (Phase 2 - Coming Soon)
+### News Analysis Platform
+- **👤 Entity Extraction** - People, organizations, locations, events from text with Schema.org JSON-LD
+- **📊 Smart Classification** - 9 entity types with automatic government detection
+- **🧠 OWL Reasoning** - Semantic inference and entity classification via SWI-Prolog
+- **🎨 Interactive Visualization** - Real-time entity display with filtering
 
 ---
 
+
+## 🧪 AI Evaluation Pipeline
+
+NewsAnalyzer includes a complete evaluation infrastructure for
+measuring and comparing AI extraction quality — the same class of
+tooling used in production AI reliability engineering.
+
+### Gold Dataset
+
+113 curated articles with 601 manually validated entity annotations
+across 4 evaluation domains:
+
+| Domain | Articles | Purpose |
+|--------|----------|---------|
+| Legislative | 53 | Congressional entities, bills, votes |
+| Executive | 20 | Executive branch, agencies, officials |
+| Judicial | 15 | Federal courts, judges, rulings |
+| CoNLL-2003 | 25 | General-domain NER sanity check |
+
+Each annotation includes character offsets, entity types (7 types),
+difficulty ratings, and perturbation labels. Dataset was constructed
+via synthetic generation with ground-truth facts, then manually
+curated and validated.
+
+### Evaluation Harness
+
+Built on [Promptfoo](https://promptfoo.dev/) with a custom entity
+scorer implementing 6-priority fuzzy matching:
+
+1. Exact text + type match → full credit
+2. Exact text + type mismatch → partial credit
+3. Substring containment + type match/mismatch
+4. Levenshtein similarity (≥0.8 threshold) + type match/mismatch
+5. No match → false positive or false negative
+
+35 pytest tests validate scorer correctness. The harness runs
+in CI/CD via GitHub Actions on every commit touching evaluation code.
+
+### Baseline Results
+
+Comparing spaCy NER (rule-based baseline) against Claude (LLM extraction):
+
+| Domain | spaCy F1 | Claude F1 | Improvement |
+|--------|----------|-----------|-------------|
+| Legislative | 0.261 | 0.593 | **2.3x** |
+| Executive | 0.359 | 0.603 | **1.7x** |
+| Judicial | 0.318 | 0.614 | **1.9x** |
+| CoNLL (general) | 0.905 | 0.867 | spaCy wins |
+
+**Key finding:** Claude delivers 1.7-2.3x F1 improvement on
+government-domain text, but spaCy outperforms on general-domain
+NER — demonstrating that model selection depends on domain, not
+just model capability. This is the kind of empirical finding that
+only emerges from systematic evaluation.
+
+### Evaluation Dashboard
+
+Interactive frontend for exploring evaluation results:
+
+- **Model Comparison** — Side-by-side metrics with per-entity-type
+  breakdown charts (Recharts)
+- **Gold Dataset Explorer** — Searchable article browser with
+  branch, difficulty, and perturbation filters
+- **Methodology Documentation** — Scoring strategy, entity taxonomy,
+  pipeline architecture, limitations
+
+---
 
 ## Why Structured Data — The Bias Problem
 
@@ -152,17 +229,23 @@ See full [Architecture Document](docs/architecture.md) for details.
 
 ```
 newsanalyzer-v2/
+├── eval/                 # AI Evaluation Pipeline
+│   ├── assertions/       # Custom Promptfoo scorers (entity_scorer.py + tests)
+│   ├── datasets/         # Gold datasets (113 articles) + derivation scripts
+│   ├── reports/          # Baseline evaluation results (JSON + HTML)
+│   └── promptfooconfig.yaml
 ├── backend/              # Spring Boot Java backend (REST API)
-├── frontend/             # Next.js TypeScript frontend
-├── reasoning-service/    # Python FastAPI (entity extraction, Prolog)
+├── frontend/             # Next.js TypeScript frontend + evaluation dashboard
+├── reasoning-service/    # Python FastAPI (entity extraction, eval services, Prolog)
+│   └── ontology/         # OWL ontologies (NewsAnalyzer + cognitive bias)
 ├── deploy/               # Docker Compose, Dockerfiles, observability config
 │   ├── dev/              # Local development (hot reload)
 │   ├── production/       # Hetzner Cloud deployment + nginx
 │   └── observability/    # OTel Collector, Prometheus, Loki, Tempo, Grafana dashboards
 ├── docs/                 # Architecture & documentation
 │   ├── architecture/     # Tech stack, source tree, coding standards
-│   └── stories/          # Epics & user stories (BMAD framework)
-├── .github/workflows/    # CI/CD pipelines
+│   └── stories/          # 26 epics & user stories (BMAD framework)
+├── .github/workflows/    # 6 CI/CD pipelines (incl. eval harness)
 └── docker-compose.dev.yml  # Infra-only dev stack (Postgres + Redis + Observability)
 ```
 
@@ -172,7 +255,7 @@ newsanalyzer-v2/
 
 > **Live Demo:** [newsanalyzer.org](http://newsanalyzer.org) — 
 > running on Hetzner Cloud, Germany
-- Note: Live Demo may be behind current code boase.
+- Note: Live demo may be behind current code base.
 
 ### Prerequisites
 
@@ -233,22 +316,29 @@ uvicorn app.main:app --reload --port 8000
 
 ## 🧪 Testing
 
+**1,700+ automated tests** across the stack with CI/CD quality gates on every PR.
+
 ```bash
-# Backend tests
+# Backend tests (765+ Java tests)
 cd backend
 ./mvnw test                 # Unit tests
 ./mvnw verify               # Integration tests
-./mvnw jacoco:report        # Coverage report
+./mvnw jacoco:report        # Coverage report (70% threshold enforced in CI)
 
-# Frontend tests
+# Frontend tests (687+ TypeScript tests, incl. 88 eval dashboard tests)
 cd frontend
 pnpm test                   # Unit tests (Vitest)
 pnpm test:e2e               # E2E tests (Playwright)
 
-# Python tests
+# Python tests (222+ eval-specific tests)
 cd reasoning-service
 pytest
 pytest --cov=app tests/     # With coverage
+
+# Evaluation pipeline tests
+cd eval
+pytest assertions/          # Scorer correctness (70 tests)
+python datasets/scripts/validate_gold.py  # Gold dataset schema validation
 ```
 
 ---
@@ -257,6 +347,8 @@ pytest --cov=app tests/     # With coverage
 
 - **[Architecture Document](docs/architecture.md)** - Complete fullstack architecture
 - **[Brownfield Analysis](docs/newsanalyzer-brownfield-analysis.md)** - V1 failure analysis and lessons learned
+- **[Evaluation Methodology](docs/stories/EVAL-2/)** - Gold dataset construction, scoring strategy, baseline results
+- **[Observability Architecture](docs/stories/OBS-1/)** - OpenTelemetry instrumentation and Grafana dashboard design
 - **[API Documentation](http://localhost:8080/swagger-ui.html)** - OpenAPI/Swagger UI (when backend running)
 
 ---
@@ -309,42 +401,50 @@ sources (Phase 1, Phase 3) before Tier 2 enrichment sources (Phase 2)
 — ensuring the factual foundation is solid before adding contextual 
 enrichment.
 
-**Current Phase:** Observability Complete - OBS-1 ✅
+**Current Phase:** AI Evaluation Complete — EVAL-1 ✅ EVAL-2 ✅ EVAL-DASH ✅
+
+### ✅ EVAL-1: Knowledge Base & Synthetic Article Generation (COMPLETE)
+- ✅ Structured fact extraction from government data sources
+- ✅ Labeled synthetic article generator with ground-truth entity annotations
+- ✅ Fact set storage APIs for evaluation dataset construction
+
+### ✅ EVAL-2: Entity Extraction Evaluation Harness (COMPLETE)
+- ✅ Gold dataset: 113 articles, 601 entities, 4 domains (legislative, executive, judicial, CoNLL)
+- ✅ Promptfoo integration with custom entity scorer (6-priority fuzzy matching)
+- ✅ Dual-extractor comparison: spaCy NER baseline vs. Claude LLM
+- ✅ Precision/recall/F1 metrics with per-entity-type breakdowns
+- ✅ Baseline results: Claude 2.3x F1 improvement on government domain
+- ✅ CI/CD pipeline — evaluation runs on every commit touching eval code
+
+### ✅ EVAL-DASH: AI Evaluation Portfolio Dashboard (COMPLETE)
+- ✅ Model comparison dashboard with Recharts visualizations
+- ✅ Gold dataset explorer with search, filtering, and article detail views
+- ✅ Evaluation methodology documentation (scoring, taxonomy, pipeline, limitations)
+- ✅ Integrated into main application navigation
+
+### ✅ OBS-1: Full-Stack Observability (COMPLETE)
+- ✅ OpenTelemetry Collector + Grafana LGTM stack (Prometheus, Loki, Tempo)
+- ✅ Auto-instrumentation across all 3 services (Java Agent, Python SDK, Next.js)
+- ✅ Distributed tracing with W3C Trace Context + log-to-trace correlation
+- ✅ 6 pre-provisioned Grafana dashboards (Service Overview, Backend JVM, Reasoning Service, Distributed Traces, Log Explorer, Home)
+- ✅ Client-side Core Web Vitals monitoring (LCP, CLS, INP)
 
 ### ✅ Phase 1: Schema.org Foundation (COMPLETE)
-- ✅ PostgreSQL schema with JSONB support
-- ✅ Java backend with Entity CRUD (61/65 tests passing)
-- ✅ Python entity extraction service (spaCy + Schema.org)
-- ✅ Frontend with entity visualization
-- ✅ Full Schema.org JSON-LD integration
-- ✅ 9 entity types supported
-- ✅ Interactive UI with type filtering
+- ✅ PostgreSQL schema with JSONB unified entity model
+- ✅ Java backend with Entity CRUD, Python entity extraction (spaCy + Schema.org)
+- ✅ 9 entity types with automatic government detection
+- ✅ Full Schema.org JSON-LD integration + interactive frontend
 
 ### ✅ Phase 3: OWL Reasoning (COMPLETE)
 - ✅ Custom NewsAnalyzer ontology (7 classes, 10 properties)
 - ✅ SWI-Prolog integration for formal logical inference
-- ✅ Automated entity classification via ontology-based inference rules
-  — entities classified by what can be *inferred* about them, not just 
-  what is explicitly stated
-- ✅ Consistency validation with cardinality constraints
-- ✅ SPARQL query support for complex entity relationships
+- ✅ Ontology-based entity classification, consistency validation, SPARQL queries
 
-### ✅ OBS-1: Full-Stack Observability (COMPLETE)
-- ✅ OpenTelemetry Collector + Grafana LGTM stack (Prometheus, Loki, Tempo)
-- ✅ Spring Boot auto-instrumentation (OTel Java Agent + Micrometer/Actuator)
-- ✅ FastAPI auto-instrumentation (OTel Python SDK)
-- ✅ Next.js server-side traces + client-side Core Web Vitals (LCP, CLS, INP)
-- ✅ Distributed tracing across all 3 services with W3C Trace Context
-- ✅ Log-to-trace correlation (click trace ID in Loki → opens trace in Tempo)
-- ✅ 6 pre-provisioned Grafana dashboards (Service Overview, Backend JVM, Reasoning Service, Distributed Traces, Log Explorer, Home)
-- ✅ Production-ready with configurable sampling rates
-
-### 🚧 Phase 2: Schema.org Enrichment (NEXT)
-- Entity library and persistence
-- External entity linking (Wikidata, DBpedia)
-- Property expansion and enrichment
-- Entity relationships
-- Export functionality
+### 🚧 EVAL-3: Cognitive Bias & Logical Fallacy Evaluation (NEXT)
+- OWL ontology for cognitive biases and logical fallacies (13 distortions)
+- SHACL shape validation for bias annotations
+- Ontology-grounded bias detector (SPARQL → prompt → Claude → SHACL validate)
+- Bias evaluation harness with gold dataset and A/B comparison
 
 ---
 
@@ -379,9 +479,6 @@ Open source for transparency and community benefit.
 
 ---
 
-## 🎓 Learning from V1
-
-NewsAnalyzer v2 is a **greenfield rewrite** that fixes critical V1 mistakes:
 ## Learning From V1: The Brownfield Analysis
 
 NewsAnalyzer v2 is a complete greenfield rewrite of a failed 
@@ -427,6 +524,6 @@ If you find this project useful, please star it on GitHub!
 
 ---
 
-**Built with ❤️ for transparent, unbiased news analysis**
+**Built with ❤️ for transparent, reliable AI — evaluated and measured, not just deployed.**
 
-*Hosted independently in Europe 🇪🇺 • Open Source 🔓 • Community Driven 🤝*
+*Hosted independently in Europe 🇪🇺 • Open Source 🔓 • AI Evaluation Pipeline 📊 • Full-Stack Observability 🔍*
