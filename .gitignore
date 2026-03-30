@@ -107,9 +107,7 @@ eval/node_modules/
 eval/reports/*
 !eval/reports/.gitkeep
 !eval/reports/baseline/
-eval/reports/baseline/*.json
 eval/reports/baseline/*.html
-!eval/reports/baseline/summary.json
 
 # ============================================================================
 # DOCKER & DEPLOYMENT
