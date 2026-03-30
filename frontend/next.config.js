@@ -139,12 +139,16 @@ const nextConfig = {
   // In local dev, defaults to http://localhost:8080.
   async rewrites() {
     const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://localhost:8080';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ]
+    return {
+      // Use fallback so Next.js API routes (e.g. /api/eval/results) are served
+      // directly, and only unmatched /api/* requests are proxied to the backend.
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+    }
   },
 
   // Security headers
