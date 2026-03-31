@@ -51,12 +51,12 @@ class ExtractedEntity:
 class EntityExtractor:
     """Extracts entities from text using spaCy NLP"""
 
-    def __init__(self, model_name: str = "en_core_web_sm"):
+    def __init__(self, model_name: str = "en_core_web_lg"):
         """
         Initialize the entity extractor with spaCy model
 
         Args:
-            model_name: spaCy model to use (default: en_core_web_sm)
+            model_name: spaCy model to use (default: en_core_web_lg)
         """
         try:
             self.nlp = spacy.load(model_name)
