@@ -60,7 +60,7 @@ Key architectural decisions:
 - **OWL + SPARQL + SHACL** (no Prolog — Prolog doesn't appear in target job descriptions)
 - **Separate ontology file** (`cognitive-bias.ttl`) importing `newsanalyzer.ttl`
 - **pyshacl** as only new dependency (pure Python, integrates with existing rdflib)
-- **13 initial distortions** — 5 cognitive biases + 8 logical fallacies
+- **14 initial distortions** — 5 cognitive biases + 9 logical fallacies (7 informal + 2 formal)
 - **Two-tier gold dataset** — synthetic (automated, objective) + curated (human, subjective)
 - **Existing stub implementation** — `/fallacies/detect` endpoint already has Pydantic models defined
 
@@ -74,7 +74,7 @@ Key architectural decisions:
 
 **Scope:**
 - New `reasoning-service/ontology/cognitive-bias.ttl` with `cb:` namespace
-- 13 `CognitiveDistortion` individuals: 5 biases (ConfirmationBias, AnchoringBias, FramingEffect, AvailabilityHeuristic, BandwagonEffect) + 8 fallacies (6 InformalFallacy: AdHominem, StrawMan, FalseDilemma, SlipperySlope, AppealToAuthority, RedHerring, CircularReasoning + 2 FormalFallacy: AffirmingTheConsequent, DenyingTheAntecedent)
+- 14 `CognitiveDistortion` individuals: 5 biases (ConfirmationBias, AnchoringBias, FramingEffect, AvailabilityHeuristic, BandwagonEffect) + 9 fallacies (7 InformalFallacy: AdHominem, StrawMan, FalseDilemma, SlipperySlope, AppealToAuthority, RedHerring, CircularReasoning + 2 FormalFallacy: AffirmingTheConsequent, DenyingTheAntecedent)
 - Class hierarchy: CognitiveDistortion → CognitiveBias / LogicalFallacy → FormalFallacy / InformalFallacy
 - Each distortion: `hasDefinition`, `hasAcademicSource`, `hasDetectionPattern`, `relatedTo`
 - Academic sources as first-class entities: Kahneman (2011), Tversky & Kahneman (1981), Nickerson (1998), Walton (2008)
@@ -83,11 +83,11 @@ Key architectural decisions:
 
 **Acceptance Criteria:**
 - [ ] `cognitive-bias.ttl` loads into rdflib Graph without errors
-- [ ] SPARQL query returns all 13 distortions with definitions
+- [ ] SPARQL query returns all 14 distortions with definitions
 - [ ] Every distortion has at least one academic source
 - [ ] Every distortion has a detection pattern
 - [ ] SHACL validation (`cognitive-bias-shapes.ttl`) passes against the ontology
-- [ ] Class hierarchy: 5 CognitiveBias, 2 FormalFallacy, 6 InformalFallacy
+- [ ] Class hierarchy: 5 CognitiveBias, 2 FormalFallacy, 7 InformalFallacy
 - [ ] Imports `newsanalyzer.ttl` successfully (combined graph works)
 
 **Effort:** ~1.5 days
@@ -214,8 +214,8 @@ Key architectural decisions:
 | EVAL-3.2 | SHACL Validator + Reasoner Extension | ~1 day | Yes |
 | EVAL-3.3 | Ontology-Grounded Bias Detector | ~2 days | Yes |
 | EVAL-3.4 | Gold Dataset + Evaluation Harness | ~2 days | Yes |
-| EVAL-3.5 | Evaluation Execution + Methodology | ~1 day | Yes |
-| **Total** | | **~7.5 days** | |
+| EVAL-3.5 | Evaluation Execution + Methodology + Grounded vs Ungrounded A/B | ~1.5 days | Yes |
+| **Total** | | **~8 days** | |
 
 **Dependency chain:** EVAL-3.1 → 3.2 → 3.3 → 3.4 → 3.5
 
@@ -239,7 +239,7 @@ Key architectural decisions:
 
 ## Definition of Done
 
-- [ ] OWL ontology with 13 distortions, academic sources, detection patterns
+- [ ] OWL ontology with 14 distortions, academic sources, detection patterns
 - [ ] SHACL validation passing for all ontology entries
 - [ ] Bias detection API implemented (both public and eval endpoints)
 - [ ] Detection prompts grounded in SPARQL-retrieved ontology definitions

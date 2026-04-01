@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+Ready for Review
 
 ## Story
 
@@ -25,16 +25,16 @@ Draft
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create OntologyGroundedBiasDetector service (AC3, AC5, AC6, AC7)
-  - [ ] Create `reasoning-service/app/services/eval/bias_detector.py`
-  - [ ] Class `OntologyGroundedBiasDetector`:
+- [x] Task 1: Create OntologyGroundedBiasDetector service (AC3, AC5, AC6, AC7)
+  - [x] Create `reasoning-service/app/services/eval/bias_detector.py`
+  - [x] Class `OntologyGroundedBiasDetector`:
     - Constructor: takes optional `api_key`, `model` (follows `LLMEntityExtractor` pattern)
     - Lazy Anthropic client initialization (`_get_client()`)
     - Instance attributes: `_api_key`, `_model`, `_client`
-  - [ ] Main method `async detect(self, text: str, distortion_types: list[str] | None = None, confidence_threshold: float = 0.0, model: str | None = None) -> BiasDetectionOutput`:
-    - **Step 1 — Retrieve definitions:** Call `get_reasoner().get_all_distortion_definitions()` (from EVAL-3.2)
+  - [x] Main method `async detect(self, text: str, distortion_types: list[str] | None = None, confidence_threshold: float = 0.0, model: str | None = None, grounded: bool = True) -> BiasDetectionOutput`:
+    - **Step 1 — Retrieve definitions:** If `grounded=True`, call `get_reasoner().get_all_distortion_definitions()` (from EVAL-3.2). If `grounded=False`, skip SPARQL — pass `definitions=None` to prompt builder.
     - If `distortion_types` is not None, filter to requested types only
-    - **Step 2 — Build grounded prompt:** Call `_build_prompt(text, definitions)`
+    - **Step 2 — Build prompt:** Call `_build_prompt(text, definitions)` — when `definitions` is None, build a generic ungrounded prompt (see Task 2)
     - Log the full grounded prompt at DEBUG level (valuable for debugging detection quality and methodology writeup)
     - **Step 3 — Call Claude:** `client.messages.create()` with system prompt + user prompt
     - **Step 4 — Parse response:** `_parse_response(response_text)` → list of annotation dicts
@@ -42,11 +42,11 @@ Draft
     - Log SHACL violations as warnings (don't reject — return with a `shacl_valid` flag)
     - **Step 6 — Filter by confidence_threshold and return**
     - Rate limiting: `await asyncio.sleep(60 / settings.eval_rate_limit_rpm)`
-  - [ ] Dry-run check: if `settings.eval_dry_run`, return empty result immediately (Step 0)
-  - [ ] Error handling: wrap Claude call in try/except, log error, raise HTTPException with descriptive message
+  - [x] Dry-run check: if `settings.eval_dry_run`, return empty result immediately (Step 0)
+  - [x] Error handling: wrap Claude call in try/except, log error, raise HTTPException with descriptive message
 
-- [ ] Task 2: Build system prompt and prompt builder (AC3)
-  - [ ] Module-level `_SYSTEM_PROMPT` constant — follows `LLMEntityExtractor` pattern:
+- [x] Task 2: Build system prompt and prompt builder (AC3)
+  - [x] Module-level `_SYSTEM_PROMPT` constant — follows `LLMEntityExtractor` pattern:
     ```
     You are a cognitive bias and logical fallacy detection system for news articles.
 
@@ -68,7 +68,7 @@ Draft
     - If no distortions are found, return an empty array []
     - Return ONLY a JSON array. No explanation, no markdown fences.
     ```
-  - [ ] `_build_prompt(self, text: str, definitions: list[dict]) -> str` method:
+  - [x] `_build_prompt(self, text: str, definitions: list[dict]) -> str` method:
     - Constructs user prompt with two sections:
       1. **DEFINITIONS:** — formatted list of all distortion definitions with detection patterns and sources
       2. **TEXT TO ANALYZE:** — the article text
@@ -79,9 +79,13 @@ Draft
       Detection pattern: Look for selective evidence citation...
       ```
     - This is the neuro-symbolic core — the prompt is grounded in SPARQL-retrieved formal definitions, not LLM training data
+  - [x] `_build_ungrounded_prompt(self, text: str) -> str` method (for EVAL-3.5 A/B comparison):
+    - No definitions section — just: "Analyze the following text for cognitive biases and logical fallacies. For each one found, provide distortion_type, category, excerpt, explanation, and confidence."
+    - Same JSON output format requirement so the scorer works identically
+    - Used when `grounded=False` is passed to `detect()`
 
-- [ ] Task 3: Build response parser (AC2, AC5)
-  - [ ] `_parse_response(self, response_text: str) -> list[dict]` method:
+- [x] Task 3: Build response parser (AC2, AC5)
+  - [x] `_parse_response(self, response_text: str) -> list[dict]` method:
     - Follow `LLMEntityExtractor._parse_response()` pattern:
       1. Try direct JSON parse
       2. Strip markdown fences (` ```json ... ``` `)
@@ -90,7 +94,7 @@ Draft
     - Validate `distortion_type` is in the ontology's known distortions (controlled vocabulary)
     - Clamp confidence to [0.0, 1.0]
     - Skip invalid annotations with warning log (don't crash on malformed LLM output)
-  - [ ] `_resolve_category(self, distortion_type: str) -> str` method:
+  - [x] `_resolve_category(self, distortion_type: str) -> str` method:
     - Derive category from ontology class hierarchy, NOT from LLM response
     - Build a lookup map at init (or lazily on first call) from SPARQL:
       ```sparql
@@ -103,16 +107,16 @@ Draft
     - Maps distortion_type → "cognitive_bias" or "logical_fallacy"
     - If LLM returns a category that disagrees with ontology, use the ontology's answer and log a warning
     - This ensures the category is always correct regardless of LLM behavior
-  - [ ] `_convert_to_rdf(self, annotations: list[dict]) -> Graph` method:
+  - [x] `_convert_to_rdf(self, annotations: list[dict]) -> Graph` method:
     - Convert parsed annotations to RDF `BiasAnnotation` triples for SHACL validation
     - Each annotation becomes a `cb:BiasAnnotation` individual with `cb:hasDistortionType`, `cb:detectedIn`, `cb:hasConfidence`, `cb:hasExplanation`
-  - [ ] `_validate_annotations(self, annotations_graph: Graph) -> bool` method:
+  - [x] `_validate_annotations(self, annotations_graph: Graph) -> bool` method:
     - Call `SHACLValidator.validate(annotations_graph)`
     - Log violations as warnings
     - Return `shacl_valid` boolean (True if conforms)
 
-- [ ] Task 4: Define output models (AC2, AC4)
-  - [ ] Pydantic models in `bias_detector.py` (or separate models file):
+- [x] Task 4: Define output models (AC2, AC4)
+  - [x] Pydantic models in `bias_detector.py` (or separate models file):
     ```python
     class BiasAnnotation(BaseModel):
         distortion_type: str
@@ -134,8 +138,8 @@ Draft
         shacl_valid: bool
     ```
 
-- [ ] Task 5: Implement `/fallacies/detect` endpoint (AC1, AC8)
-  - [ ] Modify `reasoning-service/app/api/fallacies.py`:
+- [x] Task 5: Implement `/fallacies/detect` endpoint (AC1, AC8)
+  - [x] Modify `reasoning-service/app/api/fallacies.py`:
     - Replace TODO stub with real implementation
     - Import `OntologyGroundedBiasDetector`
     - Call `detector.detect(text=request.text)`
@@ -144,41 +148,42 @@ Draft
       - annotations with `category == "cognitive_bias"` → `biases` list
       - `overall_quality_score` = 1.0 - (detected_count / distortions_checked_count) — higher score = fewer biases found
     - **Critical:** Response shape MUST match existing `FallacyDetectionResponse` Pydantic model exactly. Do NOT add fields.
-  - [ ] Handle case where bias ontology not loaded: return 503 with message "Bias ontology not loaded"
+  - [x] Handle case where bias ontology not loaded: return 503 with message "Bias ontology not loaded"
 
-- [ ] Task 6: Implement `/eval/bias/detect` endpoint (AC2, AC4)
-  - [ ] Add to `reasoning-service/app/api/eval/bias.py` (created in EVAL-3.2):
-  - [ ] New Pydantic request model:
+- [x] Task 6: Implement `/eval/bias/detect` endpoint (AC2, AC4)
+  - [x] Add to `reasoning-service/app/api/eval/bias.py` (created in EVAL-3.2):
+  - [x] New Pydantic request model:
     ```python
     class BiasDetectRequest(BaseModel):
         text: str
         distortion_types: list[str] | None = None
         confidence_threshold: float = 0.0
         include_ontology_metadata: bool = True
+        grounded: bool = True  # False = skip SPARQL, use generic prompt (for A/B comparison in EVAL-3.5)
     ```
-  - [ ] `POST /eval/bias/detect` endpoint:
+  - [x] `POST /eval/bias/detect` endpoint:
     - Create `OntologyGroundedBiasDetector` instance
     - Call `detector.detect(text, distortion_types, confidence_threshold)`
     - If `include_ontology_metadata`, enrich each annotation with definition/source/pattern from ontology
     - Return full `BiasDetectionOutput` with ontology metadata
-  - [ ] Handle case where bias ontology not loaded: return 503
+  - [x] Handle case where bias ontology not loaded: return 503
 
-- [ ] Task 7: Write tests (AC1–AC8)
-  - [ ] Create `reasoning-service/tests/services/eval/test_bias_detector.py`
-  - [ ] Test: `_build_prompt()` contains ontology definitions and academic sources
-  - [ ] Test: `_build_prompt()` with filtered `distortion_types` only includes requested types
-  - [ ] Test: `_parse_response()` extracts valid annotations from well-formed JSON
-  - [ ] Test: `_parse_response()` handles markdown-fenced JSON
-  - [ ] Test: `_parse_response()` skips annotations with invalid `distortion_type`
-  - [ ] Test: `_parse_response()` clamps confidence to [0, 1]
-  - [ ] Test: `_parse_response()` handles empty array response
-  - [ ] Test: `_parse_response()` handles malformed JSON gracefully (returns empty)
-  - [ ] Test: `_convert_to_rdf()` produces valid RDF triples
-  - [ ] Test: dry-run mode returns empty `BiasDetectionOutput` without API call
-  - [ ] Test: `/fallacies/detect` endpoint returns `FallacyDetectionResponse` shape (mock detector)
-  - [ ] Test: `/eval/bias/detect` endpoint returns annotations with ontology metadata (mock detector)
-  - [ ] Test: existing `/entities/extract` endpoint still works (regression)
-  - [ ] Run full existing test suite
+- [x] Task 7: Write tests (AC1–AC8)
+  - [x] Create `reasoning-service/tests/services/eval/test_bias_detector.py`
+  - [x] Test: `_build_prompt()` contains ontology definitions and academic sources
+  - [x] Test: `_build_prompt()` with filtered `distortion_types` only includes requested types
+  - [x] Test: `_parse_response()` extracts valid annotations from well-formed JSON
+  - [x] Test: `_parse_response()` handles markdown-fenced JSON
+  - [x] Test: `_parse_response()` skips annotations with invalid `distortion_type`
+  - [x] Test: `_parse_response()` clamps confidence to [0, 1]
+  - [x] Test: `_parse_response()` handles empty array response
+  - [x] Test: `_parse_response()` handles malformed JSON gracefully (returns empty)
+  - [x] Test: `_convert_to_rdf()` produces valid RDF triples
+  - [x] Test: dry-run mode returns empty `BiasDetectionOutput` without API call
+  - [x] Test: `/fallacies/detect` endpoint returns `FallacyDetectionResponse` shape (mock detector)
+  - [x] Test: `/eval/bias/detect` endpoint returns annotations with ontology metadata (mock detector)
+  - [x] Test: existing `/entities/extract` endpoint still works (regression)
+  - [x] Run full existing test suite
 
 ## Dev Notes
 
@@ -201,6 +206,32 @@ reasoning-service/
 │   └── services/eval/
 │       └── test_bias_detector.py            # NEW
 ```
+
+### Distortion Type Naming Convention (CRITICAL)
+
+The ontology uses PascalCase URIs (`cb:ConfirmationBias`), but the JSON API and scorer use snake_case (`confirmation_bias`). The conversion rule:
+
+| Layer | Format | Example |
+|-------|--------|---------|
+| OWL Ontology URI | PascalCase | `cb:ConfirmationBias` |
+| Prompt `[type_id]` | snake_case | `[confirmation_bias]` |
+| LLM JSON response | snake_case | `"distortion_type": "confirmation_bias"` |
+| Scorer match key | snake_case | `DISTORTION_CATEGORIES["confirmation_bias"]` |
+| Gold dataset YAML | snake_case | `type: confirmation_bias` |
+
+**Where conversion happens:** In `_build_prompt()` when formatting the definitions section. The prompt builder takes the URI local name (`ConfirmationBias`), converts to snake_case, and uses that as the `[type_id]`:
+
+```python
+def _uri_to_snake(uri_local_name: str) -> str:
+    """Convert PascalCase URI local name to snake_case for JSON API."""
+    # ConfirmationBias → confirmation_bias
+    import re
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', uri_local_name).lower()
+```
+
+**The system prompt instructs Claude to return the exact `distortion_type` identifiers from the definitions section** — so the prompt builder's snake_case `[type_id]` flows through to the LLM response, which flows to the scorer. All layers must agree on snake_case.
+
+**Validation in `_parse_response()`:** Check that each `distortion_type` in the LLM response exists in the set of known snake_case identifiers. Reject unknown types with a warning log.
 
 ### LLMEntityExtractor Pattern (Reference)
 
@@ -357,9 +388,39 @@ MOCK_CLAUDE_RESPONSE = '''[
 ]'''
 ```
 
+## Dev Agent Record
+
+### Agent Model Used
+
+Claude Opus 4.6 (1M context)
+
+### File List
+
+| File | Action | Description |
+|------|--------|-------------|
+| `reasoning-service/app/services/eval/bias_detector.py` | NEW | OntologyGroundedBiasDetector — core neuro-symbolic bias detection service (~340 lines). Includes system/ungrounded prompts, prompt builder, JSON parser, RDF converter, SHACL validator, Pydantic output models, PascalCase↔snake_case helpers. |
+| `reasoning-service/app/api/fallacies.py` | MODIFIED | Replaced TODO stub with real implementation using OntologyGroundedBiasDetector. Maps BiasDetectionOutput → FallacyDetectionResponse. |
+| `reasoning-service/app/api/eval/bias.py` | MODIFIED | Added POST /eval/bias/detect endpoint with BiasDetectRequest (grounded parameter), ontology metadata enrichment. |
+| `reasoning-service/tests/services/eval/test_bias_detector.py` | NEW | 20 tests — naming conversion, prompt building, JSON parsing, category resolution, RDF conversion, SHACL validation, dry-run, full mocked flow. |
+
+### Completion Notes
+
+- All 7 tasks complete, 82 tests pass across EVAL-3.1/3.2/3.3 + existing regression (0 failures)
+- PascalCase→snake_case naming convention implemented via `_uri_to_snake()` / `_snake_to_pascal()` helpers
+- Category resolution uses ontology class hierarchy (not LLM output) — overrides LLM if they disagree
+- SHACL validation merges ontology into annotation graph so class references resolve
+- `grounded` parameter threaded through detect() → prompt builder → system prompt for EVAL-3.5 A/B
+- Existing /entities/extract and /eval/extract/llm endpoints unaffected (AC8 confirmed via regression suite)
+
+### Debug Log References
+
+None — no issues encountered during implementation.
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-03-28 | 1.0 | Initial story draft from EVAL-3 epic and architecture | Sarah (PO) |
 | 2026-03-28 | 1.1 | Validation fixes: rdflib triple creation code example, category derived from ontology not LLM, quality score caveat documented, DEBUG logging for grounded prompt | Sarah (PO) |
+| 2026-03-29 | 1.2 | Added `grounded` parameter to detect() and BiasDetectRequest for EVAL-3.5 A/B comparison. Added _build_ungrounded_prompt(). Added CRITICAL dev note on PascalCase→snake_case naming convention across all layers. | Sarah (PO) |
+| 2026-04-01 | 1.3 | Implementation complete. 82 tests pass (20 new + 62 regression), 0 failures. | James (Dev) |

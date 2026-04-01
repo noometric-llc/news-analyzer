@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+In Progress — Infrastructure Complete, Execution Pending
 
 ## Story
 
@@ -19,12 +19,12 @@ Draft
 | AC3 | Per-distortion-type breakdown available (which biases are detected well vs poorly) |
 | AC4 | Baseline results committed to `eval/reports/bias/` |
 | AC5 | Methodology document written covering ontology design, grounding approach, evaluation metrics |
-| AC6 | Grounded vs ungrounded comparison attempted (if time permits — stretch) |
+| AC6 | Grounded vs ungrounded comparison completed — quantitative A/B results documented |
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Run baseline bias evaluation (AC1, AC2, AC3)
-  - [ ] Ensure reasoning service is running with bias ontology loaded (`GET /eval/bias/ontology/stats` returns 13 distortions)
+- [ ] Task 1: Run baseline bias evaluation (AC1, AC2, AC3) — REQUIRES SERVICE + API KEY
+  - [ ] Ensure reasoning service is running with bias ontology loaded (`GET /eval/bias/ontology/stats` returns 14 distortions)
   - [ ] Run Promptfoo evaluation: `cd eval && npx promptfoo eval -c promptfoo-bias.yaml`
   - [ ] Review console output for errors or unexpected behavior
   - [ ] If individual articles fail (timeout, API error), re-run with `--repeat` or fix and re-run
@@ -35,8 +35,9 @@ Draft
   - [ ] Generate HTML report: `npx promptfoo eval -c promptfoo-bias.yaml --output reports/bias/baseline_results.html`
   - [ ] Generate JSON report: results auto-saved to `reports/bias/` by Promptfoo outputPath config
 
-- [ ] Task 2: Analyze results (AC2, AC3)
-  - [ ] Create `eval/reports/bias/summary.json` — aggregate metrics:
+- [ ] Task 2: Analyze results (AC2, AC3) — REQUIRES EVAL RUN OUTPUT
+  - [x] Create `eval/reports/bias/scripts/summarize_results.py` — DONE (infrastructure)
+  - [ ] Run summarize script against Promptfoo output to create `eval/reports/bias/summary.json`:
     ```json
     {
       "generated": "2026-03-XX",
@@ -67,7 +68,7 @@ Draft
       }
     }
     ```
-  - [ ] Extract summary from Promptfoo's raw JSON output. Promptfoo's `derivedMetrics` provides aggregate P/R/F1 but NOT per-difficulty or per-source breakdowns — those require parsing the per-test-case `namedScores`. Write `eval/reports/bias/scripts/summarize_results.py` to:
+  - [x] summarize_results.py written — extracts per-test-case namedScores and computes breakdowns:
     - Read the raw Promptfoo JSON output
     - Compute per-distortion-type P/R/F1 from individual test case namedScores
     - Compute per-difficulty and per-source breakdowns by grouping test cases on `metadata.difficulty` and `metadata.source`
@@ -79,17 +80,24 @@ Draft
     - Does difficulty level correlate with detection quality?
     - Does synthetic vs curated affect results?
 
-- [ ] Task 3: Grounded vs ungrounded comparison (AC6 — stretch)
-  - [ ] Create a second Promptfoo provider that calls a "naive" bias detector:
-    - Option A: Create a separate `/eval/bias/detect-ungrounded` endpoint that uses the same Claude call but WITHOUT ontology definitions in the prompt (just "find biases in this text")
-    - Option B: Add a `grounded: false` parameter to the existing detect endpoint that skips the SPARQL step
-  - [ ] Run Promptfoo with both providers against the same gold dataset
-  - [ ] Compare: does ontology grounding improve P/R/F1? On which distortion types?
-  - [ ] This is the headline finding for the methodology writeup — even if the difference is small, the auditability argument stands
-  - [ ] If time doesn't permit, note this as planned future work in the methodology doc
+- [ ] Task 3: Grounded vs ungrounded comparison (AC6 — REQUIRED)
+  - [x] Add a `grounded: bool = True` parameter to `POST /eval/bias/detect` — DONE in EVAL-3.3:
+    - When `grounded=True` (default): existing behavior — SPARQL retrieves definitions, prompt includes them
+    - When `grounded=False`: skip SPARQL step, use a generic prompt ("find cognitive biases and logical fallacies in this text") with NO ontology definitions
+    - Same Claude model, same response parsing, same SHACL validation — only the prompt changes
+  - [x] Create second Promptfoo provider `eval/providers/bias_provider_ungrounded.py`:
+    - Calls same endpoint with `{"grounded": false}` in request body
+  - [x] Create second Promptfoo config `eval/promptfoo-bias-ungrounded.yaml`:
+    - Same gold dataset, same scorer, different provider
+  - [ ] Run both evaluations against the same gold dataset
+  - [ ] Compare results — document in methodology:
+    - Does ontology grounding improve P/R/F1? On which distortion types?
+    - Does grounding reduce false positives (higher precision)?
+    - Does grounding improve recall on subtle biases (hard difficulty)?
+    - Even if the quantitative difference is small, the auditability argument stands — document this framing
 
-- [ ] Task 4: Write bias detection methodology document (AC5)
-  - [ ] Create `docs/evaluation-methodology-bias.md`
+- [x] Task 4: Write bias detection methodology document (AC5)
+  - [x] Create `docs/evaluation-methodology-bias.md`
   - [ ] Sections:
     1. **Introduction** — What we evaluated (bias/fallacy detection), why (responsible AI, auditability), and the key innovation (neuro-symbolic grounding)
     2. **Ontology Design** — Class hierarchy, 13 distortions, academic sources, design decisions (OWL+SPARQL+SHACL, not Prolog)
@@ -98,19 +106,19 @@ Draft
     5. **Gold Dataset Construction** — Two-tier approach (synthetic + curated), bias injection strategy, annotation schema
     6. **Evaluation Metrics** — P/R/F1 for bias detection, partial credit for category match, pass threshold
     7. **Results** — Aggregate P/R/F1, per-type breakdown, per-difficulty analysis, key findings
-    8. **Grounded vs Ungrounded** — Comparison results (or planned future work)
+    8. **Grounded vs Ungrounded** — Comparison results with quantitative A/B analysis
     9. **Limitations** — Subjectivity of bias annotation, synthetic data limitations, single-model evaluation, ontology scope (13 of hundreds)
     10. **Future Work** — Expand ontology, add more distortion types, inter-annotator agreement, RAG evaluation integration
     11. **Tools Used** — Promptfoo, RDFLib, OWL-RL, pyshacl, Claude API, SPARQL
-  - [ ] Tone: same as `docs/evaluation-methodology.md` — professional, honest about limitations, portfolio-ready
-  - [ ] Include actual numbers from the evaluation run (not placeholders)
+  - [x] Tone: same as `docs/evaluation-methodology.md` — professional, honest about limitations, portfolio-ready
+  - [ ] Include actual numbers from the evaluation run (replace [PLACEHOLDER] markers)
 
-- [ ] Task 5: Commit baseline results (AC4)
+- [ ] Task 5: Commit baseline results (AC4) — AFTER EVAL RUN
   - [ ] Commit to `eval/reports/bias/`:
     - `summary.json` — aggregate + per-type metrics
     - `baseline_results.json` — full Promptfoo output (raw)
     - `baseline_results.html` — Promptfoo HTML report
-  - [ ] Add selective gitignore pattern for `eval/reports/bias/`:
+  - [x] Add selective gitignore pattern for `eval/reports/bias/` — DONE:
     ```gitignore
     # Ignore generated bias reports except committed baselines
     eval/reports/bias/*
@@ -122,11 +130,11 @@ Draft
     - EVAL-3 status → Complete
     - Add EVAL-3 completion note with key metrics
 
-- [ ] Task 6: Plan EVAL-DASH integration (stretch)
-  - [ ] If time permits: add bias detection results to the `/evaluation/methodology` page
+- [x] Task 6: Plan EVAL-DASH integration (stretch)
+  - [x] If time permits: add bias detection results to the `/evaluation/methodology` page
     - New section in the methodology page (EVAL-DASH.4 pattern)
     - Or plan as a follow-up micro-story
-  - [ ] At minimum: document in the methodology writeup that the results are available and how to access them
+  - [x] At minimum: document in the methodology writeup that the results are available and how to access them (Future Work section references EVAL-DASH integration)
 
 ## Dev Notes
 
@@ -218,9 +226,41 @@ This story is primarily execution and analysis — fewer automated tests than pr
 - Spot-check 5–10 individual article results for sensible detections
 - Verify per-difficulty breakdown shows expected pattern (easy > medium > hard)
 
+## Dev Agent Record
+
+### Agent Model Used
+
+Claude Opus 4.6 (1M context)
+
+### File List
+
+| File | Action | Description |
+|------|--------|-------------|
+| `eval/providers/bias_provider_ungrounded.py` | NEW | Promptfoo provider calling /eval/bias/detect with grounded=false |
+| `eval/promptfoo-bias-ungrounded.yaml` | NEW | Promptfoo config for ungrounded A/B baseline |
+| `eval/reports/bias/scripts/summarize_results.py` | NEW | Summarizes Promptfoo output → summary.json with per-type/difficulty/source breakdowns + A/B comparison mode |
+| `docs/evaluation-methodology-bias.md` | NEW | 11-section methodology document with [PLACEHOLDER] markers for actual numbers |
+| `eval/EVAL-3-RUNBOOK.md` | NEW | Step-by-step execution guide for running the evaluation |
+| `.gitignore` | MODIFIED | Added selective tracking for eval/reports/bias/ and bias-ungrounded/ |
+
+### Completion Notes
+
+- **Infrastructure complete** — all scripts, configs, providers, and methodology doc are built
+- **Execution pending** — Tasks 1, 2 (partial), 3 (partial), and 5 require running the reasoning service with ANTHROPIC_API_KEY and executing Promptfoo evaluations
+- Methodology doc has `[PLACEHOLDER]` markers in sections 7 and 8 — replace with real numbers after running
+- `grounded` parameter already implemented in EVAL-3.3 — no code changes needed for the A/B comparison
+- EVAL-3-RUNBOOK.md provides step-by-step instructions for the execution phase
+- EVAL-DASH integration documented as future work in methodology doc section 10
+
+### Debug Log References
+
+None — no issues during infrastructure build.
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-03-28 | 1.0 | Initial story draft from EVAL-3 epic and architecture | Sarah (PO) |
 | 2026-03-28 | 1.1 | Validation fixes: exact gitignore pattern for selective tracking, summarize script is required (not optional) with specific responsibilities | Sarah (PO) |
+| 2026-03-29 | 1.2 | Promoted grounded vs ungrounded comparison from stretch to REQUIRED (AC6). Chose Option B (grounded parameter) over separate endpoint. Added second provider + config. Effort increases ~0.5 days. | Sarah (PO) |
+| 2026-04-01 | 1.3 | Infrastructure complete. Ungrounded provider/config, summarize script, methodology doc (with placeholders), gitignore, runbook. Execution tasks pending service + API key. | James (Dev) |
