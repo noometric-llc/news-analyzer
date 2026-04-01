@@ -109,6 +109,14 @@ eval/reports/*
 !eval/reports/baseline/
 !eval/reports/build-api-json.js
 eval/reports/baseline/*.html
+!eval/reports/bias/
+eval/reports/bias/*
+!eval/reports/bias/summary.json
+!eval/reports/bias/baseline_results.json
+!eval/reports/bias/scripts/
+!eval/reports/bias-ungrounded/
+eval/reports/bias-ungrounded/*
+!eval/reports/bias-ungrounded/summary.json
 
 # ============================================================================
 # DOCKER & DEPLOYMENT
