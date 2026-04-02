@@ -1,0 +1,28 @@
+# EVAL-3: Cognitive Bias & Logical Fallacy Detection Evaluation
+# Runs the ontology-grounded bias detector against gold-annotated articles.
+
+description: "EVAL-3: Cognitive Bias & Logical Fallacy Detection Evaluation"
+
+providers:
+  - id: "file://providers/bias_provider.py"
+    label: "Ontology-Grounded Bias Detector"
+
+prompts:
+  - "{{article_text}}"
+
+defaultTest:
+  assert:
+    - type: python
+      value: "file://assertions/bias_scorer.py"
+
+tests: "datasets/bias/synthetic_biased.yaml"
+
+derivedMetrics:
+  - name: "Precision"
+    value: "namedScores.Precision"
+  - name: "Recall"
+    value: "namedScores.Recall"
+  - name: "F1"
+    value: "namedScores.F1"
+
+outputPath: "reports/bias/"

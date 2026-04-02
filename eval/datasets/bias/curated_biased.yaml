@@ -1,0 +1,28 @@
+# Bias Gold Dataset: Curated Real-World Excerpts
+# Schema: Same as synthetic_biased.yaml (EVAL-3.4)
+#
+# Human-curated real news excerpts with identifiable biases.
+# More ecologically valid than synthetic, but smaller and more subjective.
+#
+# Curation guidelines:
+# - Source: publicly available news articles, opinion pieces, political commentary
+# - Each excerpt: 1-3 paragraphs, clear enough to annotate
+# - If two people would disagree on whether a bias is present, mark as "hard"
+# - Include faithful (no bias) articles as negative examples
+#
+# Status: Placeholder — user is actively collecting examples.
+# Target: 15-20 curated excerpts with mix of bias types and difficulty levels.
+
+- vars:
+    article_text: >
+      The mayor's office issued a statement defending the new parking
+      ordinance, noting that it was developed after extensive community
+      input and would improve traffic flow downtown. The city council
+      approved the measure unanimously last Tuesday.
+    biases: []
+    metadata:
+      id: eval-3-curated-001
+      source: curated
+      difficulty: easy
+      bias_count: 0
+      injected_types: []

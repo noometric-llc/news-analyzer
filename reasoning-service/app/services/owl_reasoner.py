@@ -24,6 +24,59 @@ logger = logging.getLogger(__name__)
 # Namespaces
 SCHEMA = Namespace("http://schema.org/")
 NA = Namespace("http://newsanalyzer.org/ontology#")
+CB = Namespace("http://newsanalyzer.org/ontology/cognitive-bias#")
+
+
+# -------------------------------------------------------------------
+#  SPARQL query constants for cognitive bias ontology (EVAL-3.2)
+#  Defined at module level for testability and auditability.
+# -------------------------------------------------------------------
+
+SPARQL_LIST_DISTORTIONS = """
+SELECT ?d ?label ?def WHERE {
+    ?d rdf:type owl:NamedIndividual .
+    ?d rdf:type/rdfs:subClassOf* cb:CognitiveDistortion .
+    ?d rdfs:label ?label .
+    ?d cb:hasDefinition ?def .
+}
+"""
+
+SPARQL_GET_DEFINITION = """
+SELECT ?def ?patternDesc ?patternExample ?author ?year ?title WHERE {
+    ?distortion cb:hasDefinition ?def .
+    ?distortion cb:hasDetectionPattern ?pattern .
+    ?pattern cb:patternDescription ?patternDesc .
+    OPTIONAL { ?pattern cb:patternExample ?patternExample }
+    ?distortion cb:hasAcademicSource ?src .
+    ?src cb:sourceAuthor ?author .
+    ?src cb:sourceYear ?year .
+    ?src cb:sourceTitle ?title .
+}
+"""
+
+SPARQL_GET_ALL_DEFINITIONS = """
+SELECT ?d ?label ?def ?patternDesc ?patternExample ?author ?year ?title WHERE {
+    ?d rdf:type owl:NamedIndividual .
+    ?d rdf:type/rdfs:subClassOf* cb:CognitiveDistortion .
+    ?d rdfs:label ?label .
+    ?d cb:hasDefinition ?def .
+    ?d cb:hasDetectionPattern ?pattern .
+    ?pattern cb:patternDescription ?patternDesc .
+    OPTIONAL { ?pattern cb:patternExample ?patternExample }
+    ?d cb:hasAcademicSource ?src .
+    ?src cb:sourceAuthor ?author .
+    ?src cb:sourceYear ?year .
+    ?src cb:sourceTitle ?title .
+}
+"""
+
+SPARQL_COUNT_BY_CLASS = """
+SELECT ?class (COUNT(?d) AS ?count) WHERE {
+    VALUES ?class { cb:CognitiveBias cb:FormalFallacy cb:InformalFallacy }
+    ?d rdf:type ?class .
+    ?d rdf:type owl:NamedIndividual .
+} GROUP BY ?class
+"""
 
 
 class OWLReasoner:
@@ -56,9 +109,13 @@ class OWLReasoner:
         # Bind common namespaces
         self.graph.bind("schema", SCHEMA)
         self.graph.bind("na", NA)
+        self.graph.bind("cb", CB)
         self.graph.bind("owl", OWL)
         self.graph.bind("rdf", RDF)
         self.graph.bind("rdfs", RDFS)
+
+        # Bias ontology state (EVAL-3.2)
+        self._bias_ontology_loaded = False
 
         # Load ontology
         if ontology_path is None:
@@ -379,6 +436,187 @@ class OWLReasoner:
         }
         return stats
 
+    # -------------------------------------------------------------------
+    #  Cognitive Bias Ontology Methods (EVAL-3.2)
+    # -------------------------------------------------------------------
+
+    def load_bias_ontology(self, path: Optional[str] = None) -> None:
+        """
+        Load the cognitive bias ontology alongside the base ontology.
+
+        On failure: logs a warning and leaves _bias_ontology_loaded as False.
+        Existing reasoner functionality continues working regardless.
+
+        Args:
+            path: Path to cognitive-bias.ttl. Defaults to ontology/cognitive-bias.ttl.
+        """
+        if path is None:
+            resolved = Path(__file__).parent.parent.parent / "ontology" / "cognitive-bias.ttl"
+        else:
+            resolved = Path(path)
+
+        try:
+            before = len(self.graph)
+            self.graph.parse(str(resolved), format="turtle")
+            after = len(self.graph)
+            self._bias_ontology_loaded = True
+            logger.info(
+                f"Loaded bias ontology from {resolved} "
+                f"({after - before} new triples, {after} total)"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to load bias ontology: {e}")
+            self._bias_ontology_loaded = False
+
+    def get_distortion_definition(self, distortion_uri: str) -> Dict[str, Any]:
+        """
+        Get definition, detection pattern, and academic source for a distortion.
+
+        Uses initBindings for safe SPARQL parameterization.
+
+        Args:
+            distortion_uri: Full URI of the distortion individual.
+
+        Returns:
+            Dict with definition, detection_pattern, pattern_example, academic_source.
+            Empty dict if not found.
+        """
+        results = self.graph.query(
+            SPARQL_GET_DEFINITION,
+            initBindings={"distortion": URIRef(distortion_uri)},
+        )
+
+        for row in results:
+            return {
+                "definition": str(row[0]),
+                "detection_pattern": str(row[1]),
+                "pattern_example": str(row[2]) if row[2] else None,
+                "academic_source": {
+                    "author": str(row[3]),
+                    "year": int(row[4]),
+                    "title": str(row[5]),
+                },
+            }
+
+        return {}
+
+    def list_distortions(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        List all cognitive distortions, optionally filtered by category.
+
+        Args:
+            category: "bias", "fallacy", or None for all.
+
+        Returns:
+            List of dicts with uri, label, definition.
+        """
+        results = self.graph.query(SPARQL_LIST_DISTORTIONS)
+        distortions = []
+
+        for row in results:
+            uri_str = str(row[0])
+            uri_ref = URIRef(uri_str)
+            label = str(row[1])
+            definition = str(row[2])
+
+            if category == "bias":
+                if (uri_ref, RDF.type, CB.CognitiveBias) not in self.graph:
+                    continue
+            elif category == "fallacy":
+                if (
+                    (uri_ref, RDF.type, CB.InformalFallacy) not in self.graph
+                    and (uri_ref, RDF.type, CB.FormalFallacy) not in self.graph
+                ):
+                    continue
+
+            distortions.append({
+                "uri": uri_str,
+                "label": label,
+                "definition": definition,
+            })
+
+        return distortions
+
+    def get_bias_ontology_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about the cognitive bias ontology.
+
+        Returns:
+            Counts of distortions by type, academic sources, detection patterns.
+        """
+        # Count by class
+        counts: Dict[str, int] = {}
+        for row in self.graph.query(SPARQL_COUNT_BY_CLASS):
+            cls_name = str(row[0]).split("#")[-1]
+            counts[cls_name] = int(row[1])
+
+        cognitive_biases = counts.get("CognitiveBias", 0)
+        formal_fallacies = counts.get("FormalFallacy", 0)
+        informal_fallacies = counts.get("InformalFallacy", 0)
+        total = cognitive_biases + formal_fallacies + informal_fallacies
+
+        # Count academic sources
+        src_query = """
+        SELECT (COUNT(?s) AS ?count) WHERE {
+            ?s rdf:type owl:NamedIndividual .
+            ?s rdf:type cb:AcademicSource .
+        }
+        """
+        academic_sources = 0
+        for row in self.graph.query(src_query):
+            academic_sources = int(row[0])
+
+        # Count detection patterns
+        pat_query = """
+        SELECT (COUNT(?p) AS ?count) WHERE {
+            ?p rdf:type owl:NamedIndividual .
+            ?p rdf:type cb:DetectionPattern .
+        }
+        """
+        detection_patterns = 0
+        for row in self.graph.query(pat_query):
+            detection_patterns = int(row[0])
+
+        return {
+            "total_distortions": total,
+            "cognitive_biases": cognitive_biases,
+            "logical_fallacies": formal_fallacies + informal_fallacies,
+            "formal_fallacies": formal_fallacies,
+            "informal_fallacies": informal_fallacies,
+            "academic_sources": academic_sources,
+            "detection_patterns": detection_patterns,
+        }
+
+    def get_all_distortion_definitions(self) -> List[Dict[str, Any]]:
+        """
+        Get all distortion definitions with sources and patterns in one SPARQL call.
+
+        More efficient than calling get_distortion_definition() per distortion.
+        Used by EVAL-3.3's bias detector to build grounded prompts.
+
+        Returns:
+            List of dicts with uri, label, definition, detection_pattern,
+            pattern_example, academic_source {author, year, title}.
+        """
+        results = self.graph.query(SPARQL_GET_ALL_DEFINITIONS)
+        definitions = []
+
+        for row in results:
+            definitions.append({
+                "uri": str(row[0]),
+                "label": str(row[1]),
+                "definition": str(row[2]),
+                "detection_pattern": str(row[3]),
+                "pattern_example": str(row[4]) if row[4] else None,
+                "academic_source": {
+                    "author": str(row[5]),
+                    "year": int(row[6]),
+                    "title": str(row[7]),
+                },
+            })
+
+        return definitions
+
 
 # Singleton instance
 _reasoner_instance: Optional[OWLReasoner] = None
@@ -395,5 +633,11 @@ def get_reasoner() -> OWLReasoner:
                 "Install with: pip install rdflib==7.0.0 owlrl==6.0.2"
             )
         _reasoner_instance = OWLReasoner()
+
+        # Load bias ontology (optional — failure doesn't break existing functionality)
+        try:
+            _reasoner_instance.load_bias_ontology()
+        except Exception as e:
+            logger.warning(f"Bias ontology not loaded: {e}")
 
     return _reasoner_instance

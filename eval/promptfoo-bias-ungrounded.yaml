@@ -1,0 +1,29 @@
+# EVAL-3.5: Ungrounded Bias Detection (A/B Baseline)
+# Same gold dataset and scorer as promptfoo-bias.yaml, but uses the
+# ungrounded provider (no ontology definitions in prompt).
+
+description: "EVAL-3.5: Ungrounded Bias Detection (A/B Baseline — no ontology definitions)"
+
+providers:
+  - id: "file://providers/bias_provider_ungrounded.py"
+    label: "Ungrounded Bias Detector (no ontology)"
+
+prompts:
+  - "{{article_text}}"
+
+defaultTest:
+  assert:
+    - type: python
+      value: "file://assertions/bias_scorer.py"
+
+tests: "datasets/bias/synthetic_biased.yaml"
+
+derivedMetrics:
+  - name: "Precision"
+    value: "namedScores.Precision"
+  - name: "Recall"
+    value: "namedScores.Recall"
+  - name: "F1"
+    value: "namedScores.F1"
+
+outputPath: "reports/bias-ungrounded/"
