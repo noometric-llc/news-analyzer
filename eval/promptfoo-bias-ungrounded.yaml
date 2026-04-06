@@ -26,4 +26,4 @@ derivedMetrics:
   - name: "F1"
     value: "namedScores.F1"
 
-outputPath: "reports/bias-ungrounded/"
+outputPath: "reports/bias-ungrounded/baseline_results.json"

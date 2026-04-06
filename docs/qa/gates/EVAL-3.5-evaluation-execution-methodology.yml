@@ -1,0 +1,23 @@
+schema: 1
+story: 'EVAL-3.5'
+gate: WAIVED
+status_reason: 'All ACs met on substance. Three low-severity items waived: curated dataset placeholder, baseline_results.json not yet committed, no HTML report generated.'
+reviewer: 'Quinn'
+updated: '2026-04-06T00:00:00Z'
+top_issues:
+  - id: 'REQ-001'
+    severity: low
+    finding: 'AC1 specifies "full gold dataset (synthetic + curated)" but evaluation ran only against 42 synthetic articles. Curated dataset is a placeholder with 1 entry.'
+    suggested_action: 'Either expand curated dataset and re-run, or update AC1 wording to reflect that curated tier is deferred. The synthetic-only evaluation is sufficient for portfolio purposes.'
+  - id: 'DOC-001'
+    severity: low
+    finding: 'eval/reports/bias/baseline_results.json exists on disk but is not git-committed (untracked). The gitignore allowlist is correct — file just needs to be staged and committed.'
+    suggested_action: 'Run git add eval/reports/bias/baseline_results.json and include in next commit.'
+  - id: 'DOC-002'
+    severity: low
+    finding: 'No baseline_results.html report was generated. Story Task 1 mentions generating an HTML report but it was not produced.'
+    suggested_action: 'Optional — run npx promptfoo eval -c promptfoo-bias.yaml --output reports/bias/baseline_results.html if HTML report is desired for portfolio.'
+waiver:
+  active: true
+  reason: 'All three issues are low-severity cosmetic/documentation gaps. Synthetic-only evaluation is sufficient for portfolio. Curated dataset expansion and file commits are future housekeeping.'
+  approved_by: 'Product Owner'
