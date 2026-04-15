@@ -7,10 +7,12 @@ for comparing against the ontology-grounded detector.
 """
 
 import json
+import os
 import urllib.request
 import urllib.error
 
-BIAS_URL = "http://localhost:8000/eval/bias/detect"
+_base = os.environ.get("REASONING_SERVICE_URL", "http://localhost:8000").rstrip("/")
+BIAS_URL = f"{_base}/eval/bias/detect"
 
 
 def call_api(prompt, options, context):

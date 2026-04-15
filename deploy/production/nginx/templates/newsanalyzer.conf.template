@@ -1,0 +1,86 @@
+# NewsAnalyzer v2 - Site Configuration
+# This file is processed by envsubst at container startup.
+# ${REASONING_SERVICE_HOST} and ${REASONING_SERVICE_PORT} are injected from environment.
+
+upstream backend {
+    server backend:8080;
+}
+
+upstream frontend {
+    server frontend:3000;
+}
+
+upstream reasoning {
+    server ${REASONING_SERVICE_HOST}:${REASONING_SERVICE_PORT};
+}
+
+# HTTP server
+server {
+    listen 80;
+    server_name _;
+
+    # Let's Encrypt challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Eval results — serve static JSON files directly from disk
+    location = /api/eval/results {
+        default_type application/json;
+        alias /data/eval-reports/summary.json;
+    }
+
+    location ~ ^/api/eval/results/(?<branch>judicial|executive|legislative|conll)$ {
+        default_type application/json;
+        alias /data/eval-reports/${branch}_api.json;
+    }
+
+    # Live extraction — proxy to reasoning service
+    location = /api/eval/extract/spacy {
+        proxy_pass http://reasoning/entities/extract;
+        proxy_set_header Host $host;
+        proxy_set_header Content-Type "application/json";
+        proxy_set_header X-Noometric-API-Key $http_x_noometric_api_key;
+        proxy_read_timeout 30s;
+    }
+
+    location = /api/eval/extract/llm {
+        proxy_pass http://reasoning/eval/extract/llm;
+        proxy_set_header Host $host;
+        proxy_set_header Content-Type "application/json";
+        proxy_set_header X-Noometric-API-Key $http_x_noometric_api_key;
+        proxy_read_timeout 60s;
+    }
+
+    # API endpoints — no trailing slash on proxy_pass to preserve /api/ prefix
+    location /api/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    # Frontend
+    location / {
+        proxy_pass http://frontend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # Health checks
+    location /health {
+        access_log off;
+        proxy_pass http://backend/actuator/health;
+    }
+}

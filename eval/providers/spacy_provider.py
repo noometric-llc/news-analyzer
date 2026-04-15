@@ -5,10 +5,12 @@ Calls the existing reasoning-service /entities/extract endpoint.
 """
 
 import json
+import os
 import urllib.request
 import urllib.error
 
-SPACY_URL = "http://localhost:8000/entities/extract"
+_base = os.environ.get("REASONING_SERVICE_URL", "http://localhost:8000").rstrip("/")
+SPACY_URL = f"{_base}/entities/extract"
 
 
 def call_api(prompt, options, context):

@@ -5,10 +5,12 @@ Calls the EVAL-2.2 reasoning-service /eval/extract/llm endpoint.
 """
 
 import json
+import os
 import urllib.request
 import urllib.error
 
-LLM_URL = "http://localhost:8000/eval/extract/llm"
+_base = os.environ.get("REASONING_SERVICE_URL", "http://localhost:8000").rstrip("/")
+LLM_URL = f"{_base}/eval/extract/llm"
 
 
 def call_api(prompt, options, context):

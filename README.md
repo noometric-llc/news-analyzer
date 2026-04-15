@@ -213,7 +213,7 @@ constructing a verdict. The Tier 2 pathway is planned for Phase 2.
 
 - **Frontend:** Next.js 14 + TypeScript + Tailwind CSS
 - **Backend:** Spring Boot 3.2 (Java 17) REST API
-- **Reasoning Service:** Python FastAPI + SWI-Prolog
+- **Reasoning Service:** [Noometric Intelligence](https://noometric.com) — private API (entity extraction, bias detection, OWL reasoning)
 - **Databases:** PostgreSQL + Redis (only 2 databases - V1 had 5!)
 - **Observability:** OpenTelemetry + Grafana (Prometheus, Loki, Tempo)
 - **Infrastructure:** Docker Compose on Hetzner Cloud
@@ -236,7 +236,6 @@ newsanalyzer-v2/
 │   └── promptfooconfig.yaml
 ├── backend/              # Spring Boot Java backend (REST API)
 ├── frontend/             # Next.js TypeScript frontend + evaluation dashboard
-├── reasoning-service/    # Python FastAPI (entity extraction, eval services, Prolog)
 │   └── ontology/         # OWL ontologies (NewsAnalyzer + cognitive bias)
 ├── deploy/               # Docker Compose, Dockerfiles, observability config
 │   ├── dev/              # Local development (hot reload)
@@ -301,16 +300,30 @@ pnpm dev
 # Frontend runs on http://localhost:3000
 ```
 
-### 5. Run Python Service
+### 5. Start Reasoning Service
+
+The reasoning intelligence layer is maintained by [Noometric LLC](https://noometric.com)
+as a private service. To run the full stack locally:
+
+1. **Request access** to `noometric-llc/noometric-intelligence` (contact Noometric LLC)
+2. **Clone and start** the reasoning service:
 
 ```bash
-cd reasoning-service
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-# Python service runs on http://localhost:8000
+git clone https://github.com/noometric-llc/noometric-intelligence.git
+cd noometric-intelligence/reasoning-service
+docker build -t noometric-reasoning .
+docker run -p 8000:8000 -e ANTHROPIC_API_KEY=your-key noometric-reasoning
 ```
+
+3. **Set the URL** in your environment:
+
+```bash
+export REASONING_SERVICE_URL=http://localhost:8000
+```
+
+> **No access?** Entity extraction and bias detection features require the
+> reasoning service. A public hosted endpoint is planned (INFRA-2). Until then,
+> the application will start but reasoning-dependent features will be unavailable.
 
 ---
 
@@ -330,10 +343,8 @@ cd frontend
 pnpm test                   # Unit tests (Vitest)
 pnpm test:e2e               # E2E tests (Playwright)
 
-# Python tests (222+ eval-specific tests)
-cd reasoning-service
-pytest
-pytest --cov=app tests/     # With coverage
+# Reasoning service tests — run from noometric-intelligence clone
+# cd noometric-intelligence/reasoning-service && pytest
 
 # Evaluation pipeline tests
 cd eval
