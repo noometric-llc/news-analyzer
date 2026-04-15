@@ -202,7 +202,7 @@ CONGRESS_API_KEY=
 
 ### Repository
 
-- **URL:** https://github.com/newsanalyzer-admin/news-analyzer
+- **URL:** https://github.com/noometric-llc/news-analyzer
 - **Branch:** master
 
 ### Deploy Key

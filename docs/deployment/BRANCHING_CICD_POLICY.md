@@ -164,7 +164,7 @@ Configure these in GitHub: **Settings > Branches > Branch protection rules**
 
 ```bash
 # Via GitHub CLI
-gh api repos/newsanalyzer-admin/news-analyzer/branches/master/protection \
+gh api repos/noometric-llc/news-analyzer/branches/master/protection \
   --method PUT \
   --field required_status_checks='{"strict":true,"contexts":["api-tests"]}' \
   --field enforce_admins=false \

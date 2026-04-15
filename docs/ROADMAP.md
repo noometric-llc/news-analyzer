@@ -1,8 +1,8 @@
 # NewsAnalyzer Project Roadmap
 
-**Document Version:** 4.5
+**Document Version:** 4.6
 **Created:** 2025-11-25
-**Last Updated:** 2026-03-27
+**Last Updated:** 2026-04-06
 **Status:** Active
 
 ---
@@ -79,13 +79,20 @@ NewsAnalyzer v2 is a complete redesign from v1's failed architecture, implementi
 | **EVAL-1** | Complete | 100% | KB Fact Extraction & Synthetic Article Generator |
 | **EVAL-2** | Complete | 100% | Entity Extraction Evaluation Harness (Promptfoo + Precision/Recall/F1) |
 | **EVAL-DASH** | Complete | 100% | AI Evaluation Portfolio Dashboard (surfaces EVAL-1/EVAL-2 work in frontend) |
-| **EVAL-3** | Planned | 0% | Cognitive Bias & Logical Fallacy Evaluation via Ontology |
+| **EVAL-3** | Complete | 100% | Cognitive Bias & Logical Fallacy Evaluation via Ontology |
+| **EVAL-4** | **In Progress** | 0% | Evaluation Results Pipeline (run history, automated publish, cross-run comparison) |
+
+### Model Training Track
+
+| Epic | Status | Progress | Description |
+|------|--------|----------|-------------|
+| **MT-1** | Planned | 0% | SLM Fine-tuning for Domain-Specific NER (federal government news) |
 
 > **EVAL-2 Note:** ~~Build an entity extraction evaluation harness...~~ **COMPLETE (2026-03-25).** Gold dataset (64 curated articles + 25 CoNLL), dual-extractor comparison (spaCy vs Claude), Promptfoo harness with fuzzy-matching scorer, 104 pytest tests. Key result: Claude F1=0.60 vs spaCy F1=0.31 on government articles; spaCy wins on general newswire (0.91 vs 0.87).
 >
 > **EVAL-DASH Note:** ~~Frontend dashboard surfacing EVAL-1/EVAL-2 work for portfolio visibility.~~ **COMPLETE (2026-03-27).** All 5 stories implemented including stretch goal. `/evaluation` section with model comparison dashboard (P/R/F1 charts, entity-type tables), gold dataset explorer (paginated, filterable, expandable detail), portfolio-ready methodology page (OG metadata for social sharing), and live extraction comparison (side-by-side spaCy vs Claude with diff highlighting). 59 files, 853 tests, 0 regressions.
 >
-> **EVAL-3 Note:** Extends the OWL ontology with academically-grounded cognitive bias and logical fallacy definitions. LLM evaluation prompts are grounded in SPARQL-retrieved definitions rather than relying on the model's internal training knowledge — making analysis auditable and traceable to cited academic sources. Builds on EVAL-2's evaluation framework. Concept originated from architecture discussion on 2026-03-16.
+> **EVAL-3 Note:** ~~Extends the OWL ontology with academically-grounded cognitive bias and logical fallacy definitions...~~ **COMPLETE (2026-04-05).** OWL ontology with 14 cognitive distortions (5 biases + 9 fallacies), 4 academic sources, SHACL validation, neuro-symbolic bias detection pipeline (SPARQL → grounded prompt → Claude → SHACL validate). Promptfoo evaluation harness with 42 synthetic gold articles. Key result: grounded F1=0.84 vs ungrounded F1=0.64 — ontology grounding improved recall by +0.40 (0.58→0.98). Formal fallacies (denying_the_antecedent) went from F1=0.00 ungrounded to F1=1.00 grounded. 5 stories, ~130 tests, 0 regressions.
 
 ### Overall MVP Status
 
@@ -111,11 +118,13 @@ NewsAnalyzer v2 is a complete redesign from v1's failed architecture, implementi
 9. [User Experience Track](#user-experience-track)
 10. [Architecture Track](#architecture-track-1)
 11. [Knowledge Base Track](#knowledge-base-track-1)
+12. [AI Evaluation Track](#ai-evaluation-track)
+13. [Model Training Track](#model-training-track)
 
 ### Reference
-12. [Future Vision](#future-vision)
-13. [Architecture Overview](#architecture-overview)
-14. [Documentation Index](#documentation-index)
+14. [Future Vision](#future-vision)
+15. [Architecture Overview](#architecture-overview)
+16. [Documentation Index](#documentation-index)
 
 ---
 
@@ -1250,6 +1259,7 @@ Based on business requirements document objectives:
 | 2026-01-07 | 4.2 | **KB-1 Epic COMPLETE**: All 6 stories done - Presidency and ExecutiveOrder entities (V30-V33 migrations), Person/term separation for non-consecutive terms (Cleveland 22/24, Trump 45/47), Presidential data sync from seed file (47 presidencies), Executive Orders sync from Federal Register API, Admin sync UI, KB President page with historical table; 18 backend tests for EO sync, 49 frontend tests for KB page |
 | 2026-01-08 | 4.3 | **New Tracks Added**: Architecture Track (ARCH-1) and Knowledge Base Track (KB-1, KB-2). **ARCH-1 Epic APPROVED**: Individual Table Refactor (36 pts, 9 stories) - separates universal person data from role-specific data (Person → Individual + CongressionalMember); approved by Winston with 7 modifications. **KB-2 Epic DRAFTED**: Presidential Administrations (24 pts, 7 stories) - consolidates President/VP pages into unified administrations view; blocked by ARCH-1. KB-1 moved from Factbase Expansion to Knowledge Base Track. |
 | 2026-03-14 | 4.4 | **ARCH-1 Epic COMPLETE**: All 9 stories done - Individual table refactor (Person→Individual, person_id→individual_id), CongressionalMember two-entity pattern, Chamber enum extraction, full migration (V34-V42), 765 backend tests passing. **KB-2 Unblocked**: Updated epic for ARCH-1 data model changes (Person→Individual, PersonUpdateDTO→IndividualUpdateDTO). Documentation Index updated. |
+| 2026-04-06 | 4.6 | **Roadmap re-prioritization**: Added **EVAL-4** (Evaluation Results Pipeline — run history, automated publish, cross-run comparison) as next active epic. Added **Model Training Track** with **MT-1** (SLM Fine-tuning for Domain-Specific NER). Priority order: EVAL-4 → MT-1 → remaining Core Platform Phases. AI Evaluation Track and Model Training Track added to Table of Contents. |
 | 2026-03-15 | 4.5 | **KB-2 Epic COMPLETE**: All 7 stories done — unified Presidential Administrations page (KB page + Admin page), Current/Historical administration views with URL state management, Admin CRUD API endpoints (Spring Boot), navigation consolidation (Landmark icon), 4 route redirects, deprecated component cleanup. 25 backend tests, 729 frontend tests (754 total). All 7 QA gates PASS (avg score 96). 4 low-severity items tracked for future improvement. Knowledge Base Track 100% complete. |
 
 ---

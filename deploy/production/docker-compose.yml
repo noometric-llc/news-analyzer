@@ -29,7 +29,7 @@ services:
       - newsanalyzer-network
 
   backend:
-    image: ghcr.io/newsanalyzer-admin/news-analyzer-backend:latest
+    image: ghcr.io/noometric-llc/news-analyzer-backend:latest
     container_name: newsanalyzer-backend
     restart: unless-stopped
     environment:
@@ -68,7 +68,7 @@ services:
       start_period: 40s
 
   frontend:
-    image: ghcr.io/newsanalyzer-admin/news-analyzer-frontend:latest
+    image: ghcr.io/noometric-llc/news-analyzer-frontend:latest
     container_name: newsanalyzer-frontend
     restart: unless-stopped
     environment:

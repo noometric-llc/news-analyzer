@@ -1,11 +1,22 @@
-# NewsAnalyzer v2
+# NewsAnalyzer
 
-**AI evaluation, reliability, and observability infrastructure for production news analysis.**
+A public AI evaluation showcase by [Noometric LLC](https://noometric.com).
+
+NewsAnalyzer demonstrates production-grade evaluation techniques for AI-powered news analysis:
+- **Entity extraction evaluation** — Promptfoo harness with precision/recall/F1, 113-article gold dataset
+- **Cognitive bias detection evaluation** — Ontology-grounded neuro-symbolic evaluation
+- **Full-stack observability** — OpenTelemetry + Grafana LGTM stack across all services
+
+This repository contains the evaluation framework and application shell.
+The Noometric Intelligence reasoning layer (cognitive bias ontology, entity extraction, proprietary detection methodology) is maintained separately by Noometric LLC and called via the `REASONING_SERVICE_URL` API.
+
+> **Full local setup** requires access to the Noometric Intelligence service.
+> Contact [noometric.com](https://noometric.com) for access or to learn about Noometric's AI evaluation consulting.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Architecture](https://img.shields.io/badge/Architecture-Documented-green.svg)](docs/architecture.md)
-[![Eval Pipeline](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/eval.yml/badge.svg)](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/eval.yml)
-[![API Tests](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/api-tests.yml/badge.svg)](https://github.com/newsanalyzer-admin/news-analyzer/actions/workflows/api-tests.yml)
+[![Eval Pipeline](https://github.com/noometric-llc/news-analyzer/actions/workflows/eval.yml/badge.svg)](https://github.com/noometric-llc/news-analyzer/actions/workflows/eval.yml)
+[![API Tests](https://github.com/noometric-llc/news-analyzer/actions/workflows/api-tests.yml/badge.svg)](https://github.com/noometric-llc/news-analyzer/actions/workflows/api-tests.yml)
 [![Production](https://img.shields.io/badge/Production-Live-brightgreen.svg)](http://newsanalyzer.org)
 
 ---
@@ -267,7 +278,7 @@ newsanalyzer-v2/
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/newsanalyzer-admin/news-analyzer.git
+git clone https://github.com/noometric-llc/news-analyzer.git
 cd news-analyzer
 ```
 
@@ -376,7 +387,7 @@ python datasets/scripts/validate_gold.py  # Gold dataset schema validation
 
 ## 🌐 Source Control & Production
 
-- **Primary Repository:** [GitHub](https://github.com/newsanalyzer-admin/news-analyzer)
+- **Primary Repository:** [GitHub](https://github.com/noometric-llc/news-analyzer)
 - **Production Site:** [newsanalyzer.org](http://newsanalyzer.org)
 - **Production Docs:** [docs/deployment/PRODUCTION_ENVIRONMENT.md](docs/deployment/PRODUCTION_ENVIRONMENT.md)
 
@@ -470,8 +481,8 @@ Open source for transparency and community benefit.
 ## 🙋 Support & Contact
 
 - **Documentation:** [docs/](docs/)
-- **Issues:** [GitHub Issues](https://github.com/newsanalyzer-admin/news-analyzer/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/newsanalyzer-admin/news-analyzer/discussions)
+- **Issues:** [GitHub Issues](https://github.com/noometric-llc/news-analyzer/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/noometric-llc/news-analyzer/discussions)
 
 ---
 
