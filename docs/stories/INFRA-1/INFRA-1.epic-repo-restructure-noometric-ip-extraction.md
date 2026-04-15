@@ -9,7 +9,7 @@
 | **Track** | Infrastructure / IP Strategy |
 | **Epic Type** | Structural Refactor — Repository Architecture & Licensing |
 | **Priority** | HIGHEST (blocks all future Noometric proprietary development) |
-| **Status** | IN PROGRESS |
+| **Status** | Complete |
 | **Created** | 2026-04-14 |
 | **Owner** | Sarah (PO) |
 | **Depends On** | None |
@@ -121,8 +121,8 @@ The live demo capability requires hosting the reasoning service somewhere public
 - [x] All reasoning service code, ontology, methodology, and bias datasets are in `noometric-intelligence`
 - [x] `reasoning-service/` directory is removed from `news-analyzer`
 - [x] NewsAnalyzer application calls reasoning service via `REASONING_SERVICE_URL` env var
-- [ ] Local development still works (with reasoning service running locally from `noometric-intelligence`)
-- [ ] LICENSE in `news-analyzer` updated to reflect Noometric LLC
+- [x] Local development still works (with reasoning service running locally from `noometric-intelligence`)
+- [x] LICENSE in `news-analyzer` updated to reflect Noometric LLC
 - [x] README updated to reflect new architecture and Noometric relationship
-- [ ] No regressions to NewsAnalyzer application functionality
-- [ ] `newsanalyzer-admin` org archived or deleted
+- [x] No regressions to NewsAnalyzer application functionality
+- [x] `newsanalyzer-admin` org archived or deleted
