@@ -201,6 +201,18 @@ ssl/
 .github/secrets/
 
 # ============================================================================
+# NOOMETRIC PROPRIETARY — DO NOT COMMIT TO PUBLIC REPO
+# Story epics for psychometric validation methodology (EVAL-5+) live in the
+# private noometric-intelligence repo. If any of these paths reappear locally,
+# they must not be staged or pushed here.
+# ============================================================================
+docs/stories/EVAL-5/
+docs/stories/EVAL-6/
+docs/stories/EVAL-7/
+docs/stories/EVAL-8/
+docs/stories/EVAL-9/
+
+# ============================================================================
 # MISC
 # ============================================================================
 .bmad-core/
