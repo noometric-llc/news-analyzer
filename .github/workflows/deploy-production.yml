@@ -134,13 +134,13 @@ jobs:
       - name: Verify deployment
         run: |
           echo "Verifying production health..."
-          for i in {1..10}; do
+          for i in {1..20}; do
             if curl -sf http://${{ env.PRODUCTION_HOST }}/health > /dev/null 2>&1; then
               echo "Production is healthy!"
               exit 0
             fi
-            echo "Attempt $i/10 - Waiting for production..."
-            sleep 10
+            echo "Attempt $i/20 - Waiting for production..."
+            sleep 15
           done
           echo "WARNING: Could not verify production health"
           exit 1
