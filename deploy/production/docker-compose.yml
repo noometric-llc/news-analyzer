@@ -13,8 +13,10 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      # External reasoning service (noometric-intelligence). Must be set in .env — no safe default.
-      - REASONING_SERVICE_HOST=${REASONING_SERVICE_HOST}
+      # External reasoning service (noometric-intelligence). Set REASONING_SERVICE_HOST in .env.
+      # Falls back to 127.0.0.1 so nginx starts even when the reasoning service is not deployed;
+      # /api/eval/extract/* endpoints will return 502 until a real host is configured.
+      - REASONING_SERVICE_HOST=${REASONING_SERVICE_HOST:-127.0.0.1}
       - REASONING_SERVICE_PORT=${REASONING_SERVICE_PORT:-8000}
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
