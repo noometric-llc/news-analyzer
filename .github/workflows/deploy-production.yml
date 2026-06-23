@@ -135,15 +135,32 @@ jobs:
         run: |
           echo "Verifying production health..."
           for i in {1..20}; do
-            if curl -sf http://${{ env.PRODUCTION_HOST }}/health > /dev/null 2>&1; then
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ env.PRODUCTION_HOST }}/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
               echo "Production is healthy!"
               exit 0
             fi
-            echo "Attempt $i/20 - Waiting for production..."
+            echo "Attempt $i/20 - HTTP $HTTP_CODE - Waiting for production..."
             sleep 15
           done
           echo "WARNING: Could not verify production health"
           exit 1
+
+      - name: Collect diagnostics on failure
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ env.PRODUCTION_USER }}@${{ env.PRODUCTION_HOST }} "
+            echo '=== Container status ==='
+            docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+            echo '=== Backend logs (last 80 lines) ==='
+            docker logs newsanalyzer-backend --tail=80 2>&1 || echo 'No backend logs'
+            echo '=== System memory ==='
+            free -m
+            echo '=== Disk usage ==='
+            df -h /
+            echo '=== Health endpoint response ==='
+            curl -sv http://localhost/health 2>&1 || true
+          "
 
       - name: Create deployment summary
         run: |
