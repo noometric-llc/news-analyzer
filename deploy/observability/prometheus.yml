@@ -24,4 +24,4 @@ scrape_configs:
   - job_name: "backend-actuator"
     metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ["backend:8080"]
+      - targets: ["host.docker.internal:8080"]

@@ -33,12 +33,10 @@ permissions:
 
 env:
   JAVA_VERSION: '17'
-  PYTHON_VERSION: '3.11'
   DB_URL: jdbc:postgresql://localhost:5432/newsanalyzer_test
   DB_USERNAME: postgres
   DB_PASSWORD: postgres
   BACKEND_URL: http://localhost:8080
-  REASONING_URL: http://localhost:8000
 
 jobs:
   api-tests:
@@ -84,14 +82,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # ==================== Setup Python ====================
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-          cache-dependency-path: reasoning-service/requirements.txt
-
       # ==================== Cache Maven Dependencies ====================
       - name: Cache Maven dependencies
         uses: actions/cache@v4
@@ -101,24 +91,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      # ==================== Cache pip Dependencies ====================
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('reasoning-service/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      # ==================== Cache spaCy Models ====================
-      - name: Cache spaCy models
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/spacy
-          key: ${{ runner.os }}-spacy-en_core_web_sm
-          restore-keys: |
-            ${{ runner.os }}-spacy-
-
       # ==================== Build Backend ====================
       - name: Build Backend
         working-directory: ./backend
@@ -127,15 +99,6 @@ jobs:
           mvn clean package -DskipTests -q
         env:
           MAVEN_OPTS: -Xmx1024m
-
-      # ==================== Install Python Dependencies ====================
-      - name: Install Python dependencies
-        working-directory: ./reasoning-service
-        run: |
-          echo "Installing Python dependencies..."
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          python -m spacy download en_core_web_sm || true
 
       # ==================== Start Backend Service ====================
       - name: Start Backend Service
@@ -151,21 +114,11 @@ jobs:
           echo $! > /tmp/backend.pid
           echo "Backend starting in background (PID: $(cat /tmp/backend.pid))..."
 
-      # ==================== Start Reasoning Service ====================
-      - name: Start Reasoning Service
-        working-directory: ./reasoning-service
-        run: |
-          echo "Starting Python reasoning service on port 8000..."
-          uvicorn app.main:app --host 0.0.0.0 --port 8000 > /tmp/reasoning.log 2>&1 &
-          echo $! > /tmp/reasoning.pid
-          echo "Reasoning service starting in background (PID: $(cat /tmp/reasoning.pid))..."
-
       # ==================== Wait for Services ====================
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to be ready..."
 
-          # Wait for Backend
           echo "Checking Backend health..."
           for i in {1..60}; do
             if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
@@ -183,24 +136,6 @@ jobs:
             sleep 2
           done
 
-          # Wait for Reasoning Service
-          echo "Checking Reasoning Service health..."
-          for i in {1..60}; do
-            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-              echo "✓ Reasoning Service is healthy"
-              break
-            fi
-            if [ $i -eq 60 ]; then
-              echo "✗ Reasoning Service failed to start within 2 minutes"
-              echo "========== REASONING LOGS =========="
-              cat /tmp/reasoning.log || echo "No reasoning log file"
-              echo "========== END REASONING LOGS =========="
-              exit 1
-            fi
-            echo "  Attempt $i/60 - Reasoning Service not ready, waiting..."
-            sleep 2
-          done
-
           echo "All services are healthy!"
 
       # ==================== Run API Tests ====================
@@ -215,8 +150,7 @@ jobs:
             -Ddb.url=jdbc:postgresql://localhost:5432/newsanalyzer_test \
             -Ddb.username=postgres \
             -Ddb.password=postgres \
-            -Dbackend.baseUrl=http://localhost:8080 \
-            -Dreasoning.baseUrl=http://localhost:8000
+            -Dbackend.baseUrl=http://localhost:8080
 
           END_TIME=$(date +%s)
           DURATION=$((END_TIME - START_TIME))
@@ -260,10 +194,8 @@ jobs:
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Test Duration | ${{ steps.api-tests.outputs.test_duration || 'N/A' }} seconds |" >> $GITHUB_STEP_SUMMARY
           echo "| Java Version | ${{ env.JAVA_VERSION }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Python Version | ${{ env.PYTHON_VERSION }} |" >> $GITHUB_STEP_SUMMARY
           echo "| PostgreSQL | 15 |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Services Tested" >> $GITHUB_STEP_SUMMARY
           echo "- Backend API (Spring Boot): \`http://localhost:8080\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Reasoning Service (FastAPI): \`http://localhost:8000\`" >> $GITHUB_STEP_SUMMARY
           echo "- Database (PostgreSQL): \`localhost:5432\`" >> $GITHUB_STEP_SUMMARY
