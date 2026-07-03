@@ -36,7 +36,16 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/entities")
 @RequiredArgsConstructor
-@Tag(name = "Entities", description = "Entity management with Schema.org support")
+@Tag(name = "Entities", description = """
+    AI-extracted entities — named people, organizations, locations, and concepts \
+    identified by the reasoning service while analyzing news articles.
+
+    These are NOT authoritative government records. For curated government organization \
+    data imported from official sources, see the Government Organizations endpoints.
+
+    Entities gain a confidence score (0.0–1.0) from extraction and can be linked to a \
+    Government Organization record via POST /{id}/validate once confirmed.
+    """)
 public class EntityController {
 
     private final EntityService entityService;

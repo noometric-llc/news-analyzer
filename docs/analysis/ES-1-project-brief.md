@@ -142,10 +142,10 @@ If the business case (Priority #3) is approved, this becomes the technical found
 
 ### A. Research Summary
 
-This brief draws on two inputs: (1) the 2026-07-01 brainstorming session (`docs/brainstorming-session-results.md`), which established the conceptual case for treating articles as evidence, reliability-scoring sources, and enforcing a grounding boundary between evidence-backed and model-recalled claims; and (2) a targeted architecture survey conducted during this brief's drafting, which found that article ingestion does not currently exist in production (only a synthetic-data table for eval purposes), that "Factbase" is already a defined term for government master data distinct from news evidence, and that the existing `Entity` model and reasoning-service extraction contract can be reused/extended rather than replaced.
+This brief draws on two inputs: (1) the 2026-07-01 brainstorming session (`docs/analysis/ES-1-brainstorming-session-results.md`), which established the conceptual case for treating articles as evidence, reliability-scoring sources, and enforcing a grounding boundary between evidence-backed and model-recalled claims; and (2) a targeted architecture survey conducted during this brief's drafting, which found that article ingestion does not currently exist in production (only a synthetic-data table for eval purposes), that "Factbase" is already a defined term for government master data distinct from news evidence, and that the existing `Entity` model and reasoning-service extraction contract can be reused/extended rather than replaced.
 
 ### C. References
-- `docs/brainstorming-session-results.md` — source brainstorming session
+- `docs/analysis/ES-1-brainstorming-session-results.md` — source brainstorming session
 - `docs/architecture/FACTBASE_EXPANSION_ARCHITECT_HANDOFF.md` — existing Factbase architecture (government master data)
 - `docs/api/reasoning-service-contract.md` — entity-extraction API contract with noometric-intelligence
 - `docs/architecture/tech-stack.md`, `docs/architecture/source-tree.md` — current stack and structure

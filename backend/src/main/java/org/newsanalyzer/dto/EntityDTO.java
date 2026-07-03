@@ -1,5 +1,6 @@
 package org.newsanalyzer.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,13 @@ import java.util.UUID;
  * - API responses (GET /api/entities)
  * - API requests (POST /api/entities, PUT /api/entities/{id})
  */
+@Schema(description = """
+    An AI-extracted entity — a named person, organization, location, or concept \
+    identified by the reasoning service while analyzing a news article. \
+    Not an authoritative government record; confidence score reflects extraction certainty. \
+    Government organization entities may be linked to a verified GovernmentOrganization \
+    record via the /validate endpoint.
+    """)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

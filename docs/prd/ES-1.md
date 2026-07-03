@@ -32,8 +32,8 @@ Documents analyzed:
 - `docs/architecture/FACTBASE_EXPANSION_ARCHITECT_HANDOFF.md`
 - `docs/api/reasoning-service-contract.md`
 - `docs/TECHNICAL-DEBT.md`
-- `docs/brief.md` (source project brief for this enhancement)
-- `docs/brainstorming-session-results.md` (originating brainstorm)
+- `docs/analysis/ES-1-project-brief.md` (source project brief for this enhancement)
+- `docs/analysis/ES-1-brainstorming-session-results.md` (originating brainstorm)
 
 ### 1.2 Current Project State
 
@@ -78,7 +78,7 @@ Add persisted `Article` storage, link newly extracted entities back to their sou
 
 **Background Context**
 
-NewsAnalyzer has no way today to ground a claim in "here's what was reported, by whom, with what bias signal attached" — article text is processed and discarded. This blocks the political-analysis-agent vision explored in the 2026-07-01 brainstorming session (`docs/brainstorming-session-results.md`) and formalized in `docs/brief.md`.
+NewsAnalyzer has no way today to ground a claim in "here's what was reported, by whom, with what bias signal attached" — article text is processed and discarded. This blocks the political-analysis-agent vision explored in the 2026-07-01 brainstorming session (`docs/analysis/ES-1-brainstorming-session-results.md`) and formalized in `docs/analysis/ES-1-project-brief.md`.
 
 Since drafting that brief, research for this PRD surfaced that the reliability/bias-scoring capability assumed to be future, unbuilt work in `noometric-intelligence` already exists as a stable, documented reasoning-service contract endpoint (`/eval/bias/detect`). This PRD upgrades the plan accordingly: rather than shipping a placeholder score, the MVP wires in real per-article bias/fallacy annotations, while deliberately deferring cross-article source-level aggregation (a genuinely harder problem, flagged in the brainstorm as carrying sampling-representativeness and correlated-bias risk).
 
@@ -132,7 +132,7 @@ Not applicable — this enhancement has no UI component. All work is backend/API
 
 ### Integration Approach
 
-**Database Integration Strategy:** New Flyway migration(s) adding an `articles` table and a nullable `article_id` FK on `entities`, following the additive-only pattern already used for the government-org migrations (`V3`, `V4`). Naming follows existing conventions (`snake_case`, `idx_{table}_{columns}`, `fk_{table}_{columns}`).
+**Database Integration Strategy:** New Flyway migration(s) adding an `evidence_articles` table and a nullable `article_id` FK on `entities`, following the additive-only pattern already used for the government-org migrations (`V3`, `V4`). Naming follows existing conventions (`snake_case`, `idx_{table}_{columns}`, `fk_{table}_{columns}`). *(Named `evidence_articles`, not `articles` — a table by that name already exists from `V1__initial_schema.sql`, a dead design never wired to any application code, discovered during ES-1.1 implementation.)*
 
 **API Integration Strategy:** New `ArticleController` under `/api/articles`, mirroring `EntityController`'s structure. `ArticleService` orchestrates: persist article → call `/entities/extract` → call `/eval/bias/detect` → persist entities and annotations, all linked via `article_id`.
 
@@ -196,7 +196,7 @@ so that ingested article content and metadata can be stored and referenced by ot
 
 **Acceptance Criteria**
 1. An `Article` JPA entity exists with fields: id (UUID), source/outlet name, url, publicationDate, rawText, ingestedAt, following existing `Entity` model conventions.
-2. A Flyway migration creates the `articles` table additively, following the naming and indexing conventions in `coding-standards.md`.
+2. A Flyway migration creates the `evidence_articles` table additively, following the naming and indexing conventions in `coding-standards.md`.
 3. `Entity` gains a nullable `article_id` FK column via an additive migration, with `@JsonIgnore` on the lazy relation and the FK id exposed directly for API consumers, per the `GovernmentOrganization` pattern.
 4. An `ArticleRepository` (Spring Data JPA) exists, mirroring `EntityRepository`'s structure, providing the persistence access used by Story 1.2 onward.
 5. Unit tests (`ArticleTest`) verify entity mapping and constraints.
@@ -303,5 +303,6 @@ so that pipeline quality is no longer validated only against synthetic data.
 
 | Change | Date | Version | Description | Author |
 |---|---|---|---|---|
-| Initial draft | 2026-07-02 | 0.1 | Created from `docs/brief.md` via BMad `create-brownfield-prd` workflow | John (PM) / Steve Kosuth-Wood |
+| Initial draft | 2026-07-02 | 0.1 | Created from `docs/analysis/ES-1-project-brief.md` via BMad `create-brownfield-prd` workflow | John (PM) / Steve Kosuth-Wood |
 | PO validation fixes | 2026-07-02 | 0.2 | Added `ArticleRepository` to Story 1.1 AC; documented duplicate-submission behavior in Story 1.2; added rate-limit-confirmation prerequisite to Story 1.4 | Sarah (PO) / Steve Kosuth-Wood |
+| Table rename reconciliation | 2026-07-03 | 0.3 | Renamed `articles` → `evidence_articles` throughout — Story ES-1.1 implementation discovered a pre-existing, unused table of that name from `V1__initial_schema.sql`. Reconciled after the fact; no requirements changed, only the table name. | Sarah (PO) / Steve Kosuth-Wood |

@@ -26,7 +26,7 @@ This document outlines the architectural approach for enhancing NewsAnalyzer wit
 - `docs/architecture/FACTBASE_EXPANSION_ARCHITECT_HANDOFF.md`
 - `docs/api/reasoning-service-contract.md`
 - `docs/prd/ES-1.md`
-- `docs/brief.md`, `docs/brainstorming-session-results.md`
+- `docs/analysis/ES-1-project-brief.md`, `docs/analysis/ES-1-brainstorming-session-results.md`
 
 **Identified Constraints:**
 - IP boundary (CLAUDE.md): no reasoning/scoring *methodology* may be implemented in this repo — only consumption of the documented, stable reasoning-service contract
@@ -43,6 +43,7 @@ This document outlines the architectural approach for enhancing NewsAnalyzer wit
 |---|---|---|---|---|
 | Initial draft | 2026-07-02 | 0.1 | Created from `docs/prd/ES-1.md` | Winston (Architect) / Steve Kosuth-Wood |
 | PO validation fixes | 2026-07-02 | 0.2 | Added rollback triggers/thresholds; documented duplicate-submission behavior; added rate-limit-confirmation prerequisite to Story Manager Handoff | Sarah (PO) / Steve Kosuth-Wood |
+| Table rename reconciliation | 2026-07-03 | 0.3 | Renamed `articles` → `evidence_articles` throughout (Data Models, Tech Stack, Source Tree) — Story ES-1.1 implementation discovered a pre-existing, unused table of that name from `V1__initial_schema.sql`. Migration numbers confirmed as `V45`/`V46`. No design changes, only naming. | Sarah (PO) / Steve Kosuth-Wood |
 
 ---
 
@@ -55,7 +56,7 @@ This document outlines the architectural approach for enhancing NewsAnalyzer wit
 
 **Integration Approach**
 - **Code Integration Strategy:** New classes slot into the existing package structure (`model/repository/service/controller/dto`), mirroring the `Entity`/`EntityService`/`EntityController` pattern. No new microservice — a deliberate "monolith-first" call, matching the Factbase-expansion precedent's reasoning.
-- **Database Integration:** Additive Flyway migrations creating `articles` and `article_bias_annotations` tables, plus a nullable `article_id` FK column on `entities`. Nothing about existing tables is removed or narrowed.
+- **Database Integration:** Additive Flyway migrations creating `evidence_articles` and `article_bias_annotations` tables, plus a nullable `article_id` FK column on `entities`. Nothing about existing tables is removed or narrowed.
 - **API Integration:** New `/api/articles` resource family following existing `@RestController`/`@Tag`/constructor-injection conventions. `/api/entities` and `/api/government-orgs` are untouched.
 - **UI Integration:** None — no UI component to this enhancement.
 
@@ -76,7 +77,7 @@ This document outlines the architectural approach for enhancing NewsAnalyzer wit
 | Backend Language | Java | 17 | All new classes (`Article` model/repo/service/controller, `ReasoningServiceClient`) | No change |
 | Backend Framework | Spring Boot | 3.2.2 | New REST controller, JPA entities, transactional services | No change |
 | HTTP Client | `RestTemplate` (via `RestTemplateBuilder`) | Spring-managed | New `ReasoningServiceClient` calling `/entities/extract` and `/eval/bias/detect` directly | Mirrors the **verified, actual** `CongressApiClient` implementation (configured timeouts, manual retry) — not the `@Retryable`/`@CircuitBreaker` style proposed (but not implemented) in the Factbase handoff doc |
-| Database | PostgreSQL | 15 | New `articles`, `article_bias_annotations` tables; nullable FK on `entities` | JSONB available for flexible annotation metadata |
+| Database | PostgreSQL | 15 | New `evidence_articles`, `article_bias_annotations` tables; nullable FK on `entities` | JSONB available for flexible annotation metadata |
 | Schema Migration | Flyway | existing versioning | New additive migration file(s) | Follows `V{n}__{description}.sql` convention |
 | Caching | Redis / Caffeine (in-memory) | existing | Not used — MVP ingestion is manual/low-volume, no rate-limited external API in this path | N/A this phase |
 | API Docs | springdoc-openapi (Swagger) | existing | New `/api/articles` endpoints annotated | No change |
@@ -116,7 +117,7 @@ This document outlines the architectural approach for enhancing NewsAnalyzer wit
 
 **Key Attributes:**
 - `id`: UUID
-- `articleId`: FK → `articles.id`
+- `articleId`: FK → `evidence_articles.id`
 - `distortionType`: VARCHAR — snake_case ontology identifier, stored as-is from the contract response
 - `category`: VARCHAR — `cognitive_bias` \| `logical_fallacy`
 - `excerpt`: TEXT, `explanation`: TEXT, `confidence`: FLOAT
@@ -127,21 +128,23 @@ This document outlines the architectural approach for enhancing NewsAnalyzer wit
 ### Schema Integration Strategy
 
 **Database Changes Required:**
-- **New Tables:** `articles`, `article_bias_annotations`
+- **New Tables:** `evidence_articles`, `article_bias_annotations` *(not `articles` — see naming note below)*
 - **Modified Tables:** `entities` — add nullable `article_id UUID` FK column
-- **New Indexes:** `idx_articles_source_name`, `idx_articles_publication_date`, `idx_article_bias_annotations_article_id`, `idx_entities_article_id`
+- **New Indexes:** `idx_evidence_articles_source_name`, `idx_evidence_articles_publication_date`, `idx_article_bias_annotations_article_id`, `idx_entities_article_id`
 - **Migration Strategy:** Two separate additive migrations, mirroring the exact historical precedent of `V3__create_government_organizations.sql` followed by `V4__add_entity_gov_org_link.sql`:
-  1. `V{next}__create_articles.sql` — creates `articles` and `article_bias_annotations`
-  2. `V{next+1}__add_entity_article_link.sql` — adds the nullable `article_id` FK to `entities`
+  1. `V45__create_evidence_articles.sql` — creates `evidence_articles` (only — `article_bias_annotations` is deferred to Story ES-1.4, not created by ES-1.1)
+  2. `V46__add_entity_article_link.sql` — adds the nullable `article_id` FK to `entities`
 
-  *(Do not hardcode `{next}` — confirm the actual latest migration number in `backend/src/main/resources/db/migration/` at implementation time; `source-tree.md` only documents through `V4`, and the repo has moved on since.)*
+  *(Migration numbers confirmed during Story ES-1.1 implementation — actual latest at the time was `V44`, not `V4`, exactly as this document warned to check rather than assume.)*
+
+**Naming note — `evidence_articles`, not `articles`:** Story ES-1.1's implementation discovered that a table named `articles` already exists, created by `V1__initial_schema.sql`. It is a dead V1-era design (columns: url/title/content/author/analysis_status) never wired to any JPA entity or application code — confirmed via full-codebase search, zero references anywhere. Repurposing it was considered and rejected: its `url UNIQUE NOT NULL` constraint directly contradicts this epic's deliberate no-dedup-at-MVP decision, and its single `analysis_status` field conflicts with the required `extraction_status`/`bias_detection_status` split (NFR3). The new table was named `evidence_articles` instead — left the dead V1 table untouched rather than dropping it, since that's a separate, deliberate cleanup decision outside this story's scope.
 
 **Backward Compatibility:**
 - `entity.article_id` is nullable, defaults to `NULL` — every existing `Entity` row is valid immediately, no backfill required
 - `entity.source` (existing freeform string field) is untouched
 - No existing table is narrowed, renamed, or has a column removed
 
-**Duplicate Submissions** *(decided during PO validation)*: No uniqueness constraint on `articles` (e.g., on `url`) at MVP — resubmitting the same article creates a new row. Deduplication requires deciding what "duplicate" means (URL match? text-hash match? URL+publicationDate?), which is a real design question deferred to Phase 2 rather than rushed here, especially given MVP's low, manual ingestion volume.
+**Duplicate Submissions** *(decided during PO validation)*: No uniqueness constraint on `evidence_articles` (e.g., on `url`) at MVP — resubmitting the same article creates a new row. Deduplication requires deciding what "duplicate" means (URL match? text-hash match? URL+publicationDate?), which is a real design question deferred to Phase 2 rather than rushed here, especially given MVP's low, manual ingestion volume.
 
 ---
 
@@ -318,8 +321,8 @@ New files slot directly into the existing package structure — no new top-level
 │       ├── ArticleService.java                  # NEW
 │       └── ReasoningServiceClient.java          # NEW
 ├── backend/src/main/resources/db/migration/
-│   ├── V{next}__create_articles.sql             # NEW
-│   └── V{next+1}__add_entity_article_link.sql   # NEW
+│   ├── V45__create_evidence_articles.sql        # DONE (ES-1.1)
+│   └── V46__add_entity_article_link.sql         # DONE (ES-1.1)
 └── backend/src/test/java/org/newsanalyzer/
     ├── controller/ArticleControllerTest.java    # NEW
     ├── model/ArticleTest.java                   # NEW

@@ -135,6 +135,8 @@ class EntityTest {
             "Person",
             schemaOrgData,
             null,  // governmentOrganization (NEW in Phase 1.6)
+            null,  // articleId (NEW in ES-1.1)
+            null,  // article (NEW in ES-1.1)
             "test_source",
             0.95f,
             true,

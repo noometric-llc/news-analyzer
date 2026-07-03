@@ -14,7 +14,7 @@
 
 ## Executive Summary
 
-Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — article storage, entity-to-article linkage, and real bias/fallacy signal from the existing (but previously production-unused) reasoning-service `/eval/bias/detect` endpoint. This is the technical foundation for the political-analysis-agent vision explored in `docs/brainstorming-session-results.md`: nothing in NewsAnalyzer today can ground a claim in "here's what was reported, by whom, and how reliable that source is," because article text is currently processed and discarded rather than persisted.
+Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — article storage, entity-to-article linkage, and real bias/fallacy signal from the existing (but previously production-unused) reasoning-service `/eval/bias/detect` endpoint. This is the technical foundation for the political-analysis-agent vision explored in `docs/analysis/ES-1-brainstorming-session-results.md`: nothing in NewsAnalyzer today can ground a claim in "here's what was reported, by whom, and how reliable that source is," because article text is currently processed and discarded rather than persisted.
 
 ## Business Value
 
@@ -24,11 +24,11 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 2. **Upgrades a placeholder into real signal** — research during PRD drafting found `/eval/bias/detect` already exists as a stable, documented contract endpoint, unused in production. This epic makes NewsAnalyzer its first production caller, rather than shipping a null placeholder as originally scoped in the project brief.
 3. **Closes a real testing gap** — the entity-extraction pipeline has only ever been validated against synthetic data (`SyntheticArticle`); this epic enables validation against real ingested content.
 4. **Establishes a reusable pattern** — `ReasoningServiceClient` becomes the first Java-side reasoning-service caller and the reference implementation for any future one.
-5. **Strategic optionality** — per `docs/brief.md`, this may also become the technical foundation for NewsAnalyzer as a public case study for Noometric's LLM persona-profiling business direction, though that business decision is explicitly out of this epic's scope (see `docs/brief.md` Priority #3).
+5. **Strategic optionality** — per `docs/analysis/ES-1-project-brief.md`, this may also become the technical foundation for NewsAnalyzer as a public case study for Noometric's LLM persona-profiling business direction, though that business decision is explicitly out of this epic's scope (see `docs/analysis/ES-1-project-brief.md` Priority #3).
 
 ### Success Metrics
 
-*(Carried from `docs/brief.md`'s KPIs — these predate the PRD and remain the epic's north star.)*
+*(Carried from `docs/analysis/ES-1-project-brief.md`'s KPIs — these predate the PRD and remain the epic's north star.)*
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
@@ -39,7 +39,7 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 
 ## Scope
 
-*(Carried from `docs/brief.md`'s MVP Scope, refined during PRD/architecture drafting.)*
+*(Carried from `docs/analysis/ES-1-project-brief.md`'s MVP Scope, refined during PRD/architecture drafting.)*
 
 ### In Scope
 
@@ -63,18 +63,18 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 
 ### Technology Stack
 
-*(No new technology — see `docs/architecture-evidence-store-foundation.md` Tech Stack section for full rationale.)*
+*(No new technology — see `docs/architecture/ES-1-ARCHITECT-HANDOFF.md` Tech Stack section for full rationale.)*
 
 | Component | Technology | Notes |
 |-----------|------------|-------|
 | Backend | Java 17 / Spring Boot 3.2.2 | Existing stack, no version change |
 | HTTP Client | `RestTemplate` via `RestTemplateBuilder` | New `ReasoningServiceClient` — first Java-side reasoning-service caller, mirrors the verified `CongressApiClient` pattern |
-| Database | PostgreSQL 15 + Flyway | Two new tables (`articles`, `article_bias_annotations`), one additive FK on `entities` |
+| Database | PostgreSQL 15 + Flyway | Two new tables (`evidence_articles`, `article_bias_annotations`), one additive FK on `entities` |
 | Reasoning Service | `noometric-intelligence` (private) | Consumes existing `/entities/extract` and `/eval/bias/detect` — no contract changes |
 
 ### Project Structure
 
-*(See `docs/architecture-evidence-store-foundation.md` Source Tree for full detail — no new top-level packages, everything lands in the existing `model/`, `repository/`, `service/`, `controller/`, `dto/` structure.)*
+*(See `docs/architecture/ES-1-ARCHITECT-HANDOFF.md` Source Tree for full detail — no new top-level packages, everything lands in the existing `model/`, `repository/`, `service/`, `controller/`, `dto/` structure.)*
 
 ## Stories
 
@@ -82,7 +82,7 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 
 | ID | Story | Status |
 |----|-------|--------|
-| ES-1.1 | [Article Persistence Model](ES-1.1.article-persistence-model.md) | Draft |
+| ES-1.1 | [Article Persistence Model](ES-1.1.article-persistence-model.md) | Ready for Review |
 | ES-1.2 | Article Ingestion API (Persistence Only) | Not yet drafted |
 | ES-1.3 | Entity Extraction Integration | Not yet drafted |
 | ES-1.4 | Bias/Fallacy Annotation Integration | Not yet drafted |
@@ -118,7 +118,7 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 
 ## Acceptance Criteria (Epic Level)
 
-1. **Schema Foundation:** `articles` and `article_bias_annotations` tables exist; `entities.article_id` is a nullable, additive FK — verified via Flyway migration review and IV1-style regression tests.
+1. **Schema Foundation:** `evidence_articles` and `article_bias_annotations` tables exist; `entities.article_id` is a nullable, additive FK — verified via Flyway migration review and IV1-style regression tests.
 2. **Ingestion Pipeline:** An article submitted via API is persisted, has entities extracted and linked, and has bias annotations attached — end-to-end, verified by at least one real (non-synthetic) test article (per ES-1.6).
 3. **Zero Silent Blending:** The grounded-query interface always distinguishes evidence-backed results from "no grounded evidence found" — never an ambiguous response.
 4. **Zero Regression:** The full existing `mvn test` suite passes unchanged; `/api/entities` and `/api/government-orgs` behavior is unaffected.
@@ -126,7 +126,7 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 
 ## Risks & Mitigations
 
-*(Carried from `docs/architecture-evidence-store-foundation.md`'s Checklist Results Report — top risks, resolved status noted.)*
+*(Carried from `docs/architecture/ES-1-ARCHITECT-HANDOFF.md`'s Checklist Results Report — top risks, resolved status noted.)*
 
 | Risk | Impact | Status | Mitigation |
 |------|--------|--------|------------|
@@ -148,10 +148,10 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 
 ## Related Documentation
 
-- [Project Brief](../../brief.md) — original business framing and priority sequencing
-- [Brainstorming Session Results](../../brainstorming-session-results.md) — originating ideation session
+- [Project Brief](../../analysis/ES-1-project-brief.md) — original business framing and priority sequencing
+- [Brainstorming Session Results](../../analysis/ES-1-brainstorming-session-results.md) — originating ideation session
 - [PRD](../../prd/ES-1.md) — full functional/non-functional requirements
-- [Architecture](../../architecture-evidence-store-foundation.md) — technical design, component architecture, checklist validation
+- [Architecture](../../architecture/ES-1-ARCHITECT-HANDOFF.md) — technical design, component architecture, checklist validation
 - [Reasoning Service Contract](../../api/reasoning-service-contract.md) — the API boundary this epic consumes
 - [Factbase Expansion Architect Handoff](../../architecture/FACTBASE_EXPANSION_ARCHITECT_HANDOFF.md) — the precedent this epic's schema/migration approach mirrors
 
@@ -160,6 +160,7 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-07-03 | 1.0 | Initial epic creation, consolidating brief/PRD/architecture into the project's standard epic-overview format | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-03 | 1.1 | ES-1.1 status updated to Ready for Review; table rename reconciled (`articles` → `evidence_articles`) after Story ES-1.1 implementation discovered a pre-existing, unused table of that name from `V1__initial_schema.sql` | Sarah (PO) / Steve Kosuth-Wood |
 
 ## Architectural Review Summary
 

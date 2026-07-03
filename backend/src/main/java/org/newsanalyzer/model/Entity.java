@@ -110,6 +110,25 @@ public class Entity {
     private GovernmentOrganization governmentOrganization;
 
     /**
+     * Plain FK id for the originating Article, for cheap access without
+     * triggering a lazy load. Null for entities not sourced from an ingested
+     * article (e.g., manually created entities).
+     */
+    @Column(name = "article_id")
+    private UUID articleId;
+
+    /**
+     * Lazy relation to the Evidence Store Article this entity was extracted
+     * from. Read-only navigation (insertable/updatable = false) — writes go
+     * through {@link #articleId}. Mirrors GovernmentOrganization's
+     * parent/parentId pattern.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "article_id", insertable = false, updatable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Article article;
+
+    /**
      * Source of the entity (e.g., "article:123", "manual_entry", "wikidata")
      */
     @Column(length = 100)
