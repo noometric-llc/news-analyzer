@@ -51,7 +51,7 @@ The UI-2 patterns are sound; they were simply applied to the wrong data layer.
 |----------|-----------------|
 | `docs/architecture/architecture.md` | Already updated (v2.5) |
 | `docs/ROADMAP.md` | Add UI-3 epic, update UI track status |
-| `docs/prd.md` | Add section for public navigation changes (future) |
+| `docs/prd/index.md` | Add section for public navigation changes (future) |
 | UI-2 Epic doc | Add "Superseded by UI-3" note |
 | Frontend code | Major restructure (new epic) |
 

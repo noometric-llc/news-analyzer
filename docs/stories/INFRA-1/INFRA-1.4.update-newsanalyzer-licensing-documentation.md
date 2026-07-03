@@ -103,7 +103,7 @@ detection methodology) is maintained separately by Noometric LLC.
 |---|---|---|
 | `docs/evaluation-methodology-bias.md` | Should already be removed (INFRA-1.3) | Proprietary |
 | `docs/stories/EVAL-*/` | Keep | Documents technique, not proprietary IP |
-| `docs/prd/` or `docs/prd.md` | Keep | Product requirements for the showcase |
+| `docs/prd/` | Keep | Product requirements for the showcase (per-epic PRDs, indexed at `docs/prd/index.md`) |
 | `docs/architecture/` | Keep | Application architecture (not proprietary) |
 | Any doc referencing `cognitive-bias.ttl` internals | Remove or summarize | Ontology detail is proprietary |
 

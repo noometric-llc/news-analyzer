@@ -2085,5 +2085,5 @@ The architecture is ready for implementation and will serve as the single source
 **Next Steps:** Begin implementation following this architecture
 **Reference Documents:**
 - `docs/newsanalyzer-brownfield-analysis.md` - V1 failure analysis
-- `docs/prd.md` - Product requirements (to be created)
+- `docs/prd/index.md` - Product requirements index (per-epic PRDs in `docs/prd/`)
 - OpenAPI specification (to be generated from SpringDoc annotations)

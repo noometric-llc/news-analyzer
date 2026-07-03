@@ -3,7 +3,7 @@
 **Date:** 2025-12-03
 **From:** Sarah (Product Owner)
 **To:** Architect
-**PRD Location:** `docs/prd.md`
+**PRD Location:** `docs/prd/ADMIN-1.md`
 **Status:** Pending Architect Review
 
 ---
@@ -146,7 +146,7 @@ For reference, the architect should validate alignment with these existing patte
 
 ## How to Review
 
-1. Read full PRD at `docs/prd.md`
+1. Read full PRD at `docs/prd/ADMIN-1.md`
 2. Review GOVMAN XML sample at `data/GOVINFO/GOVMAN-2025-01-13.xml`
 3. Check existing import patterns in `backend/src/main/java/org/newsanalyzer/service/`
 4. Provide feedback via architect review document or inline PRD comments
