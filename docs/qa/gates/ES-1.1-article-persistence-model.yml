@@ -1,0 +1,69 @@
+# Quality Gate Decision
+# Story: ES-1.1 Article Persistence Model
+
+schema: 1
+story: "ES-1.1"
+story_title: "Article Persistence Model"
+gate: PASS
+status_reason: "Both previously-flagged gaps are closed with substantive tests, not just coverage-for-coverage's-sake: ArticleRepositoryTest (10 tests) directly round-trips ArticleStatusConverter against the real CHECK constraints and verifies the fk_entities_article FK's ON DELETE SET NULL behavior end-to-end. File List is now complete and accurate. All 5 ACs have direct test coverage; 93/93 tests pass, independently re-verified from a clean build."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-07-03T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues: []
+
+# Extended fields
+quality_score: 100
+expires: "2026-07-17T00:00:00Z"
+
+evidence:
+  tests_reviewed: 93
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+quality_assessment:
+  code_structure:
+    status: PASS
+    notes: "Mirrors existing Entity/GovernmentOrganization patterns precisely; correctly scoped, no premature abstractions"
+  migration_correctness:
+    status: PASS
+    notes: "Migrations apply cleanly against real Postgres via Testcontainers; ArticleRepositoryTest now directly exercises the CHECK constraints and FK behavior rather than relying on inference from a successful Flyway apply"
+  test_design:
+    status: PASS
+    notes: "ArticleTest (8 unit tests) + ArticleRepositoryTest (10 integration tests, including ON DELETE SET NULL cascade verification) + EntityTest additions (articleId round-trip) give full coverage at appropriate levels — unit for POJO behavior, integration for DB-level correctness"
+  documentation:
+    status: PASS
+    notes: "Javadoc explains non-obvious decisions (V1 collision, FK pattern choice) rather than restating the obvious"
+  story_administration:
+    status: PASS
+    notes: "File List is complete and accurate, including the two Swagger-only files with correct descriptions of scope and impact"
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No new API surface this story; no user input handling yet (deferred to ES-1.2 where the rawText size cap is scoped)"
+  performance:
+    status: PASS
+    notes: "Indexes present on source_name, publication_date, and the new FK; zero shared query logic with existing endpoints, confirmed via full regression"
+  reliability:
+    status: PASS
+    notes: "Nullable FK with ON DELETE SET NULL now verified end-to-end (not just assumed from the migration text); extraction/bias status tracked independently per NFR3"
+  maintainability:
+    status: PASS
+    notes: "Consistent naming, good inline documentation, deliberate scope discipline"
+
+recommendations:
+  future:
+    - action: "Once ES-1.4 adds real content, consider whether the dead V1 articles/biases tables should be dropped in a dedicated cleanup migration"
+      refs: ["backend/src/main/resources/db/migration/V1__initial_schema.sql"]
+
+history:
+  - date: "2026-07-03"
+    gate: CONCERNS
+    note: "Initial review — flagged missing ArticleRepositoryTest and incomplete File List"
+  - date: "2026-07-03"
+    gate: PASS
+    note: "Re-review after Dev closed both gaps — see status_reason"

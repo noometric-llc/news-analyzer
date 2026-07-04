@@ -1,0 +1,61 @@
+# Quality Gate Decision
+# Story: ES-1.2 Article Ingestion API (Persistence Only)
+
+schema: 1
+story: "ES-1.2"
+story_title: "Article Ingestion API (Persistence Only)"
+gate: PASS
+status_reason: "All 6 ACs have direct test coverage. One real gap found during review — sourceName/url had no length validation matching Article's DB column constraints (VARCHAR(255)/VARCHAR(1000)), which would have surfaced as a confusing 409 instead of a clean 400 — fixed directly (added @Size annotations + 2 tests) during this review. Full backend suite (843 tests) passes, independently re-verified from a clean build."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-07-04T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues: []
+
+# Extended fields
+quality_score: 95
+expires: "2026-07-18T00:00:00Z"
+
+evidence:
+  tests_reviewed: 843
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+
+quality_assessment:
+  code_structure:
+    status: PASS
+    notes: "Mirrors EntityDTO/CreateEntityRequest/EntityController/EntityService patterns precisely, verified against actual code rather than assumed"
+  input_validation:
+    status: PASS
+    notes: "Initially had a gap (sourceName/url unvalidated for length despite DB constraints) — found and fixed during this review with matching @Size annotations and regression tests"
+  test_design:
+    status: PASS
+    notes: "Three-layer coverage: ArticleControllerTest (web layer, 8 tests), ArticleServiceTest (logic, 4 tests), plus ArticleRepositoryTest from ES-1.1 (persistence, real Postgres). Live end-to-end smoke test not present but low-risk given standard, already-proven Spring wiring patterns."
+  documentation:
+    status: PASS
+    notes: "Javadoc and Swagger annotations complete; dev correctly identified and fixed an inaccurate architecture-doc claim (exception handling pattern) before implementing rather than propagating the error"
+  story_administration:
+    status: PASS
+    notes: "File List accurate; Change Log and Completion Notes thorough, including an honest self-flagged gap (no live manual verification) rather than overclaiming"
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Length-validation fix closes a minor resource-exhaustion vector; endpoint intentionally unauthenticated matching project-wide posture; rate limiting correctly deferred to ES-1.3 where the actual cost-bearing risk begins"
+  performance:
+    status: PASS
+    notes: "No new query patterns; zero shared configuration changes, confirmed via full 843-test regression"
+  reliability:
+    status: PASS
+    notes: "GlobalExceptionHandler already covers every exception this story's validation can trigger; no new exception classes needed"
+  maintainability:
+    status: PASS
+    notes: "No MapStruct/mapper abstraction introduced — manual mapping matches existing EntityService convention exactly, appropriately not over-engineered"
+
+recommendations:
+  future:
+    - action: "Consider one live smoke test (@SpringBootTest end-to-end, or documented manual curl) once ES-1.3 adds real reasoning-service integration — the wiring risk is currently low but grows as more is layered on top"
+      refs: ["backend/src/main/java/org/newsanalyzer/controller/ArticleController.java"]

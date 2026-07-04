@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -117,6 +118,22 @@ class EntityTest {
 
         entity.setSource("article:12345");
         assertEquals("article:12345", entity.getSource());
+    }
+
+    @Test
+    void testArticleIdDefaultsToNull() {
+        // Entities not sourced from an ingested article (e.g. manual entry)
+        // must not have an articleId — this is the CR1 backward-compatibility
+        // guarantee for every pre-ES-1.1 Entity row.
+        assertNull(entity.getArticleId());
+    }
+
+    @Test
+    void testArticleId() {
+        UUID articleId = UUID.randomUUID();
+        entity.setArticleId(articleId);
+
+        assertEquals(articleId, entity.getArticleId());
     }
 
     @Test

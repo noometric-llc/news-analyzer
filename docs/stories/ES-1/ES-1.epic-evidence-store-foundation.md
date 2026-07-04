@@ -82,8 +82,8 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 
 | ID | Story | Status |
 |----|-------|--------|
-| ES-1.1 | [Article Persistence Model](ES-1.1.article-persistence-model.md) | Ready for Review |
-| ES-1.2 | Article Ingestion API (Persistence Only) | Not yet drafted |
+| ES-1.1 | [Article Persistence Model](ES-1.1.article-persistence-model.md) | Ready for Done |
+| ES-1.2 | [Article Ingestion API (Persistence Only)](ES-1.2.article-ingestion-api.md) | Ready for Done |
 | ES-1.3 | Entity Extraction Integration | Not yet drafted |
 | ES-1.4 | Bias/Fallacy Annotation Integration | Not yet drafted |
 | ES-1.5 | Grounded-Query Interface | Not yet drafted |
@@ -161,6 +161,8 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 |------|---------|-------------|--------|
 | 2026-07-03 | 1.0 | Initial epic creation, consolidating brief/PRD/architecture into the project's standard epic-overview format | Sarah (PO) / Steve Kosuth-Wood |
 | 2026-07-03 | 1.1 | ES-1.1 status updated to Ready for Review; table rename reconciled (`articles` → `evidence_articles`) after Story ES-1.1 implementation discovered a pre-existing, unused table of that name from `V1__initial_schema.sql` | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-04 | 1.2 | ES-1.1 completed — QA gate PASS (quality score 100), status updated to Ready for Done. ES-1.2 drafted and linked. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-04 | 1.3 | ES-1.2 completed — QA gate PASS (quality score 95), status updated to Ready for Done. Two of six ES-1 stories now done. | Sarah (PO) / Steve Kosuth-Wood |
 
 ## Architectural Review Summary
 
