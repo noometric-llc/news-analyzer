@@ -1,0 +1,64 @@
+# Quality Gate Decision
+# Story: ES-1.3 Entity Extraction Integration
+
+schema: 1
+story: "ES-1.3"
+story_title: "Entity Extraction Integration"
+gate: PASS
+status_reason: "Both CONCERNS findings from the 2026-07-05 review are genuinely closed, independently re-verified rather than taken on faith: NOOMETRIC_API_KEY is now forwarded in all three docker-compose files (dev, prod, prod-build), and entity-extraction batch persistence is now atomic (EntityService.createEntitiesFromExtraction()), with both a unit test proving the batch aborts at the failing entity and a real-Postgres integration test proving the earlier valid entity actually gets rolled back. One stale Javadoc (describing the old, now-incorrect per-entity-transaction behavior) found and fixed during this re-review. Full backend suite: 858/858 passing."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-07-06T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues: []
+
+# Extended fields
+quality_score: 100
+expires: "2026-07-20T00:00:00Z"
+
+evidence:
+  tests_reviewed: 858
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+    notes: "AC5 verified via EntityRepository directly (Task 9's own scoping) rather than literally through '/api/entities' queries — a documentation wording inconsistency between AC5's prose and Task 9's subtask text, not a missing test. Carried over from the prior review; still non-blocking."
+
+quality_assessment:
+  code_structure:
+    status: PASS
+    notes: "Atomic batch fix (EntityService.createEntitiesFromExtraction()) correctly reuses the existing single-entity method via same-class self-invocation, deliberately relying on the ambient thread-bound transaction from the outer (cross-bean, proxied) call rather than trying to force independent transactions per entity"
+  transaction_boundary:
+    status: PASS
+    notes: "Verified by hand-tracing the proxy/self-invocation mechanics, not just by reading the Javadoc: one real transaction now covers the whole entity batch, opened by the cross-bean call from ArticleService, with the ~30s external HTTP call still correctly sitting outside any transaction"
+  test_design:
+    status: PASS
+    notes: "Correct division of labor between test levels: EntityServiceTest's unit test proves control-flow (stream aborts at the failing entity), ArticleExtractionIntegrationTest's new real-Postgres test proves the actual rollback guarantee that a mock cannot demonstrate"
+  documentation:
+    status: PASS
+    notes: "One stale Javadoc block (ArticleService, 3 locations) still described pre-fix per-entity-transaction behavior — found and corrected during this re-review since it directly misrepresented the very property the fix establishes"
+  story_administration:
+    status: PASS
+    notes: "Change Log, Completion Notes, and File List for the fix round are thorough and accurately describe what changed and why"
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "NOOMETRIC_API_KEY now reaches the container in all three compose variants (dev, prod, prod-build) — independently re-verified via grep, not just re-reading the story's claim"
+  performance:
+    status: PASS
+    notes: "No change from prior PASS — 30s timeout and no-transaction-across-HTTP-call properties both hold"
+  reliability:
+    status: PASS
+    notes: "extractionStatus=FAILED now reliably means zero entities were created for that extraction attempt, proven against a real database, not just asserted"
+  maintainability:
+    status: PASS
+    notes: "New tests (EntityServiceTest x4, ArticleExtractionIntegrationTest x1) close a coverage gap that predated this fix round — createEntityFromExtraction() previously had no direct EntityService-level test at all, only indirect coverage via mocked ArticleServiceTest calls"
+
+recommendations:
+  future:
+    - action: "Consider a CI-level consistency check between .env.example and each docker-compose file's environment: block, so a documented-but-unwired env var can't silently recur for the next new integration"
+      refs: [".env.example", "deploy/dev/docker-compose.yml", "deploy/production/docker-compose.yml", "deploy/production/docker-compose.build.yml"]
+    - action: "Consider updating AC5's literal wording to match Task 9's actual EntityRepository-based verification scope, purely for future-reader clarity"
+      refs: ["docs/stories/ES-1/ES-1.3.entity-extraction-integration.md"]

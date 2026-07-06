@@ -40,9 +40,8 @@ jwt:
   expiration: 86400000  # 24 hours in milliseconds
 
 # External Services
-reasoning-service:
-  base-url: http://localhost:8000
-  timeout: 5000
+# reasoning-service config lives in base application.yml (loads regardless of
+# active profile) — see TD-002 in docs/TECHNICAL-DEBT.md
 
 # Congress.gov API
 congress:

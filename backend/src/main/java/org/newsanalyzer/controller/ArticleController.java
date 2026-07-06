@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.newsanalyzer.dto.ArticleDTO;
 import org.newsanalyzer.dto.CreateArticleRequest;
+import org.newsanalyzer.service.ArticleIngestionRateLimiter;
 import org.newsanalyzer.service.ArticleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,11 @@ import java.util.UUID;
  * REST API Controller for Article operations.
  *
  * Endpoints:
- * - POST /api/articles      - Submit and persist a new article
+ * - POST /api/articles      - Submit and persist a new article, then trigger
+ *                             entity extraction (Story ES-1.3)
  * - GET  /api/articles/{id} - Get article by ID
  *
- * Persistence only at this stage (Story ES-1.2) — no extraction or
- * bias-detection calls occur here yet.
+ * Bias-detection calls do not occur here yet.
  */
 @Slf4j
 @RestController
@@ -40,6 +41,7 @@ import java.util.UUID;
 public class ArticleController {
 
     private final ArticleService articleService;
+    private final ArticleIngestionRateLimiter rateLimiter;
 
     /**
      * Submit a new article
@@ -47,6 +49,11 @@ public class ArticleController {
     @PostMapping
     @Operation(summary = "Submit a new article", description = "Persist a new article for the Evidence Store")
     public ResponseEntity<ArticleDTO> createArticle(@Valid @RequestBody CreateArticleRequest request) {
+        if (!rateLimiter.tryAcquire()) {
+            log.warn("POST /api/articles - Rate limit exceeded");
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+        }
+
         log.info("POST /api/articles - Creating article: {}", request.getSourceName());
         ArticleDTO created = articleService.createArticle(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);

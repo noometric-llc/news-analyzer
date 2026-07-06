@@ -7,6 +7,7 @@ import org.newsanalyzer.dto.ArticleDTO;
 import org.newsanalyzer.dto.CreateArticleRequest;
 import org.newsanalyzer.exception.ResourceNotFoundException;
 import org.newsanalyzer.model.ArticleStatus;
+import org.newsanalyzer.service.ArticleIngestionRateLimiter;
 import org.newsanalyzer.service.ArticleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -41,6 +42,9 @@ class ArticleControllerTest {
     @MockBean
     private ArticleService articleService;
 
+    @MockBean
+    private ArticleIngestionRateLimiter rateLimiter;
+
     private CreateArticleRequest createRequest;
     private ArticleDTO articleDTO;
     private UUID testId;
@@ -48,6 +52,7 @@ class ArticleControllerTest {
     @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
+        when(rateLimiter.tryAcquire()).thenReturn(true);
 
         createRequest = new CreateArticleRequest();
         createRequest.setSourceName("CNN");
@@ -172,6 +177,20 @@ class ArticleControllerTest {
             .andExpect(status().isNotFound());
 
         verify(articleService).getArticleById(testId);
+    }
+
+    @Test
+    @WithMockUser
+    void testCreateArticleWhenRateLimitExceeded() throws Exception {
+        when(rateLimiter.tryAcquire()).thenReturn(false);
+
+        mockMvc.perform(post("/api/articles")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createRequest)))
+            .andExpect(status().isTooManyRequests());
+
+        verify(articleService, never()).createArticle(any());
     }
 
     @Test

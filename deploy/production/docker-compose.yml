@@ -44,6 +44,7 @@ services:
       - SPRING_DATA_REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - REASONING_SERVICE_URL=${REASONING_SERVICE_URL}
+      - NOOMETRIC_API_KEY=${NOOMETRIC_API_KEY}
       - CONGRESS_API_KEY=${CONGRESS_API_KEY}
       # Flyway baseline — allows restore from pg_dump without migration history
       - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true

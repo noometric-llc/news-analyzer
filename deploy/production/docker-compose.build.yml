@@ -52,6 +52,7 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - REASONING_SERVICE_URL=${REASONING_SERVICE_URL:-http://localhost:8000}
+      - NOOMETRIC_API_KEY=${NOOMETRIC_API_KEY:-}
       - CONGRESS_API_KEY=${CONGRESS_API_KEY:-}
     depends_on:
       postgres:

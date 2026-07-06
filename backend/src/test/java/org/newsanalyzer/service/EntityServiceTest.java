@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.newsanalyzer.dto.CreateEntityRequest;
 import org.newsanalyzer.dto.EntityDTO;
+import org.newsanalyzer.dto.ExtractedEntityData;
 import org.newsanalyzer.model.Entity;
 import org.newsanalyzer.model.EntityType;
 import org.newsanalyzer.repository.EntityRepository;
@@ -325,6 +326,86 @@ class EntityServiceTest {
             !entity.getVerified() &&
             entity.getProperties() != null
         ));
+    }
+
+    // =====================================================================
+    // Story ES-1.3: Extraction-to-Entity Tests
+    // =====================================================================
+
+    private ExtractedEntityData extractedEntity(String text, String entityType) {
+        ExtractedEntityData extracted = new ExtractedEntityData();
+        extracted.setText(text);
+        extracted.setEntityType(entityType);
+        extracted.setConfidence(0.85f);
+        extracted.setSchemaOrgType("Person");
+        return extracted;
+    }
+
+    @Test
+    void testCreateEntityFromExtraction() {
+        ExtractedEntityData extracted = extractedEntity("Elizabeth Warren", "person");
+        when(entityRepository.save(any(Entity.class))).thenReturn(testEntity);
+
+        Entity result = entityService.createEntityFromExtraction(extracted, testId);
+
+        assertNotNull(result);
+        verify(entityRepository).save(argThat(entity ->
+            entity.getEntityType() == EntityType.PERSON &&
+            entity.getName().equals("Elizabeth Warren") &&
+            entity.getArticleId().equals(testId) &&
+            !entity.getVerified()
+        ));
+    }
+
+    @Test
+    void testCreateEntityFromExtraction_unrecognizedEntityType_throws() {
+        // The reasoning-service contract documents a fixed set of entity_type
+        // values; an unrecognized one (e.g. a future contract addition this
+        // side hasn't been updated for yet) must surface as a hard failure,
+        // not silently map to a wrong/default EntityType.
+        ExtractedEntityData extracted = extractedEntity("Something", "not_a_real_type");
+
+        assertThrows(IllegalArgumentException.class, () ->
+            entityService.createEntityFromExtraction(extracted, testId));
+
+        verify(entityRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreateEntitiesFromExtraction_allValid_allPersisted() {
+        ExtractedEntityData first = extractedEntity("Elizabeth Warren", "person");
+        ExtractedEntityData second = extractedEntity("EPA", "government_org");
+        when(entityRepository.save(any(Entity.class))).thenReturn(testEntity);
+
+        List<Entity> results = entityService.createEntitiesFromExtraction(List.of(first, second), testId);
+
+        assertEquals(2, results.size());
+        verify(entityRepository, times(2)).save(any(Entity.class));
+    }
+
+    @Test
+    void testCreateEntitiesFromExtraction_oneEntityFailsToMap_abortsBeforeLaterEntities() {
+        // Story ES-1.3 QA finding: createEntityFromExtraction() looped
+        // per-entity in ArticleService meant earlier entities in a batch
+        // committed independently of a later failure. Routing the whole
+        // batch through this one @Transactional method means Spring rolls
+        // back everything on any exception — this unit test proves the
+        // stream aborts at the failing entity (no calls past it); the real
+        // rollback-of-already-flushed-rows guarantee is proven against a
+        // real database in ArticleExtractionIntegrationTest, since Mockito
+        // can't simulate an actual transaction rollback.
+        ExtractedEntityData valid = extractedEntity("Elizabeth Warren", "person");
+        ExtractedEntityData invalid = extractedEntity("Something", "not_a_real_type");
+        when(entityRepository.save(any(Entity.class))).thenReturn(testEntity);
+
+        assertThrows(IllegalArgumentException.class, () ->
+            entityService.createEntitiesFromExtraction(List.of(valid, invalid), testId));
+
+        // The valid entity (processed before the invalid one) was saved to
+        // the mocked repository, but in production this call runs inside the
+        // batch's single transaction, so a real database would roll it back
+        // too — see ArticleExtractionIntegrationTest for that proof.
+        verify(entityRepository, times(1)).save(any(Entity.class));
     }
 
     // =====================================================================

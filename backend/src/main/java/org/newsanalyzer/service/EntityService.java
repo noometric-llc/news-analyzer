@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.newsanalyzer.dto.CreateEntityRequest;
 import org.newsanalyzer.dto.EntityDTO;
+import org.newsanalyzer.dto.ExtractedEntityData;
 import org.newsanalyzer.exception.ResourceNotFoundException;
 import org.newsanalyzer.model.Entity;
 import org.newsanalyzer.model.EntityType;
@@ -77,6 +78,66 @@ public class EntityService {
         log.info("Created entity: id={}, name={}", saved.getId(), saved.getName());
 
         return toDTO(saved);
+    }
+
+    /**
+     * Create an Entity from a reasoning-service extraction result, linked to
+     * its source Article via articleId.
+     *
+     * Unlike createEntity(), no Schema.org auto-generation is needed here —
+     * the reasoning service's /entities/extract response already includes
+     * schemaOrgType/schemaOrgData directly.
+     *
+     * Deliberately does not set the freeform `source` field (e.g. the old
+     * "article:123" convention) — articleId is the real, queryable FK now;
+     * duplicating the same fact into a string field would be redundant.
+     *
+     * Called by ArticleService (Story ES-1.3) — see the must-fix
+     * transaction-boundary guidance in the architecture doc: this method
+     * itself is a short, self-contained transaction, called only AFTER the
+     * external reasoning-service HTTP call has already completed.
+     */
+    @Transactional
+    public Entity createEntityFromExtraction(ExtractedEntityData extracted, UUID articleId) {
+        log.info("Creating entity from extraction: text={}, articleId={}", extracted.getText(), articleId);
+
+        Entity entity = new Entity();
+        entity.setEntityType(EntityType.valueOf(extracted.getEntityType().toUpperCase()));
+        entity.setName(extracted.getText());
+        entity.setProperties(extracted.getProperties() != null ? extracted.getProperties() : Map.of());
+        entity.setSchemaOrgType(extracted.getSchemaOrgType());
+        entity.setSchemaOrgData(extracted.getSchemaOrgData() != null ? extracted.getSchemaOrgData() : Map.of());
+        entity.setConfidenceScore(extracted.getConfidence());
+        entity.setVerified(false);
+        entity.setArticleId(articleId);
+
+        Entity saved = entityRepository.save(entity);
+        log.info("Created entity from extraction: id={}, name={}, articleId={}",
+            saved.getId(), saved.getName(), saved.getArticleId());
+
+        return saved;
+    }
+
+    /**
+     * Create every entity in an extraction batch atomically: either all of
+     * them persist, or (if any single one fails to map — e.g. an
+     * entity_type the EntityType enum doesn't recognize) none of them do.
+     *
+     * Added during QA review of Story ES-1.3: calling createEntityFromExtraction()
+     * per-entity in a loop from ArticleService meant each call committed
+     * independently, so a failure partway through a batch left earlier
+     * entities persisted even though the article's extractionStatus was set
+     * to FAILED — contradicting the "no entities created" invariant that
+     * status is supposed to guarantee. Routing the whole batch through one
+     * @Transactional method fixes that: an exception on any entity rolls
+     * back the entire batch, so FAILED always means zero entities from this
+     * extraction attempt actually landed in the database.
+     */
+    @Transactional
+    public List<Entity> createEntitiesFromExtraction(List<ExtractedEntityData> extractedEntities, UUID articleId) {
+        return extractedEntities.stream()
+            .map(extracted -> createEntityFromExtraction(extracted, articleId))
+            .collect(Collectors.toList());
     }
 
     /**

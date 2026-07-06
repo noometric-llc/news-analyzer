@@ -57,6 +57,7 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - REASONING_SERVICE_URL=${REASONING_SERVICE_URL:-http://localhost:8000}
+      - NOOMETRIC_API_KEY=${NOOMETRIC_API_KEY:-}
       # JMX flags + OTel Java agent — both passed to Spring Boot JVM via ENTRYPOINT's $JMX_OPTS
       - JMX_OPTS=-javaagent:/opt/opentelemetry-javaagent.jar -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=localhost
       # OpenTelemetry configuration (OBS-1.2)

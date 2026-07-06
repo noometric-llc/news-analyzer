@@ -9,27 +9,42 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.newsanalyzer.dto.ArticleDTO;
 import org.newsanalyzer.dto.CreateArticleRequest;
+import org.newsanalyzer.dto.EntityExtractionResponse;
+import org.newsanalyzer.dto.ExtractedEntityData;
 import org.newsanalyzer.model.Article;
 import org.newsanalyzer.model.ArticleStatus;
 import org.newsanalyzer.repository.ArticleRepository;
+import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for ArticleService with mocked dependencies.
- * Mirrors EntityServiceTest's structure.
+ *
+ * Story ES-1.3 note: createArticle() now always calls articleRepository.save()
+ * twice (persist, then persist the extraction-status update) and always
+ * invokes ReasoningServiceClient — every test below stubs both, even the
+ * ones focused on persistence, since createArticle() is no longer
+ * extraction-free the way it was in ES-1.2.
  */
 @ExtendWith(MockitoExtension.class)
 class ArticleServiceTest {
 
     @Mock
     private ArticleRepository articleRepository;
+
+    @Mock
+    private ReasoningServiceClient reasoningServiceClient;
+
+    @Mock
+    private EntityService entityService;
 
     @InjectMocks
     private ArticleService articleService;
@@ -57,38 +72,116 @@ class ArticleServiceTest {
         testArticle.setIngestedAt(LocalDateTime.now());
     }
 
+    private EntityExtractionResponse emptyExtractionResponse() {
+        EntityExtractionResponse response = new EntityExtractionResponse();
+        response.setEntities(List.of());
+        response.setTotalCount(0);
+        return response;
+    }
+
     @Test
-    void testCreateArticle() {
+    void testCreateArticle_extractionSucceeds_returnsPersistedArticle() {
         when(articleRepository.save(any(Article.class))).thenReturn(testArticle);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat()))
+            .thenReturn(emptyExtractionResponse());
 
         ArticleDTO result = articleService.createArticle(createRequest);
 
         assertNotNull(result);
         assertEquals(testId, result.getId());
         assertEquals("CNN", result.getSourceName());
-        assertEquals(ArticleStatus.PENDING, result.getExtractionStatus());
+        assertEquals(ArticleStatus.SUCCESS, result.getExtractionStatus());
         assertEquals(ArticleStatus.PENDING, result.getBiasDetectionStatus());
         assertNull(result.getReliabilityScore());
 
-        verify(articleRepository).save(any(Article.class));
+        verify(articleRepository, times(2)).save(any(Article.class));
     }
 
     @Test
     void testCreateArticlePersistsRequestFields() {
-        // Proves the CreateArticleRequest -> Article mapping in ArticleService
-        // actually carries every field through, not just the ones asserted
-        // on the returned DTO above.
+        // Proves the CreateArticleRequest -> Article mapping is correct on
+        // the FIRST save() call (before extraction runs) — captures every
+        // save() invocation and checks the first one specifically.
         when(articleRepository.save(any(Article.class))).thenReturn(testArticle);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat()))
+            .thenReturn(emptyExtractionResponse());
 
         ArgumentCaptor<Article> captor = ArgumentCaptor.forClass(Article.class);
         articleService.createArticle(createRequest);
 
-        verify(articleRepository).save(captor.capture());
-        Article persisted = captor.getValue();
-        assertEquals("CNN", persisted.getSourceName());
-        assertEquals("https://example.com/article", persisted.getUrl());
-        assertEquals(createRequest.getPublicationDate(), persisted.getPublicationDate());
-        assertEquals("Full article text...", persisted.getRawText());
+        verify(articleRepository, times(2)).save(captor.capture());
+        Article firstSave = captor.getAllValues().get(0);
+        assertEquals("CNN", firstSave.getSourceName());
+        assertEquals("https://example.com/article", firstSave.getUrl());
+        assertEquals(createRequest.getPublicationDate(), firstSave.getPublicationDate());
+        assertEquals("Full article text...", firstSave.getRawText());
+    }
+
+    @Test
+    void testCreateArticle_extractionSucceeds_entitiesCreatedAndLinked() {
+        ExtractedEntityData extracted = new ExtractedEntityData();
+        extracted.setText("Elizabeth Warren");
+        extracted.setEntityType("person");
+        extracted.setConfidence(0.85f);
+        extracted.setSchemaOrgType("Person");
+
+        EntityExtractionResponse response = new EntityExtractionResponse();
+        response.setEntities(List.of(extracted));
+        response.setTotalCount(1);
+
+        when(articleRepository.save(any(Article.class))).thenReturn(testArticle);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat())).thenReturn(response);
+
+        ArticleDTO result = articleService.createArticle(createRequest);
+
+        assertEquals(ArticleStatus.SUCCESS, result.getExtractionStatus());
+        verify(entityService).createEntitiesFromExtraction(List.of(extracted), testId);
+    }
+
+    @Test
+    void testCreateArticle_extractionFails_articleStillPersistsWithFailedStatus() {
+        when(articleRepository.save(any(Article.class))).thenReturn(testArticle);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat()))
+            .thenThrow(new RestClientException("Connection refused"));
+
+        ArticleDTO result = articleService.createArticle(createRequest);
+
+        // The article still exists and is returned — extraction failure
+        // must never block persistence (NFR3).
+        assertNotNull(result);
+        assertEquals(testId, result.getId());
+        assertEquals(ArticleStatus.FAILED, result.getExtractionStatus());
+
+        verify(entityService, never()).createEntitiesFromExtraction(any(), any());
+        verify(articleRepository, times(2)).save(any(Article.class));
+    }
+
+    @Test
+    void testCreateArticle_unexpectedExceptionDuringPersistence_stillMarksFailed() {
+        // Proves the broader catch(Exception) safety net around entity
+        // persistence, not just around the reasoning-service call itself.
+        when(articleRepository.save(any(Article.class))).thenReturn(testArticle);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat()))
+            .thenReturn(emptyExtractionResponse());
+        // Simulate an unexpected bug in downstream processing (e.g. a
+        // malformed entity_type the batch can't map) by making the atomic
+        // batch call itself throw — createEntitiesFromExtraction() is
+        // @Transactional, so in production this would roll back the whole
+        // batch, not just this one call.
+        ExtractedEntityData extracted = new ExtractedEntityData();
+        extracted.setText("Bad Entity");
+        extracted.setEntityType("person");
+        EntityExtractionResponse response = new EntityExtractionResponse();
+        response.setEntities(List.of(extracted));
+        response.setTotalCount(1);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat())).thenReturn(response);
+        when(entityService.createEntitiesFromExtraction(any(), any()))
+            .thenThrow(new RuntimeException("Unexpected mapping bug"));
+
+        ArticleDTO result = articleService.createArticle(createRequest);
+
+        assertNotNull(result);
+        assertEquals(ArticleStatus.FAILED, result.getExtractionStatus());
     }
 
     @Test

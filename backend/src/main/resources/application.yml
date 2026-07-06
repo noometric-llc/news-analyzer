@@ -33,3 +33,13 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+
+# Reasoning service (noometric-intelligence, private repo).
+# Defined here (not application-dev.yml) so it loads regardless of active
+# Spring profile — see TD-002 in docs/TECHNICAL-DEBT.md for why that matters:
+# application-prod.yml doesn't exist yet, so profile-specific config is
+# silently skipped in production.
+reasoning-service:
+  base-url: ${REASONING_SERVICE_URL:http://localhost:8000}
+  api-key: ${NOOMETRIC_API_KEY:}
+  timeout: 30000
