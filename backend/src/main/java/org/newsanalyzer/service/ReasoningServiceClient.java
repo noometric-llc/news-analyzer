@@ -2,7 +2,9 @@ package org.newsanalyzer.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.newsanalyzer.config.ReasoningServiceConfig;
+import org.newsanalyzer.dto.BiasDetectionResponse;
 import org.newsanalyzer.dto.EntityExtractionResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,10 +38,15 @@ public class ReasoningServiceClient {
 
     private final ReasoningServiceConfig config;
     private final RestTemplate restTemplate;
+    private final RestTemplate biasRestTemplate;
 
-    public ReasoningServiceClient(ReasoningServiceConfig config, RestTemplate reasoningServiceRestTemplate) {
+    public ReasoningServiceClient(
+            ReasoningServiceConfig config,
+            @Qualifier("reasoningServiceRestTemplate") RestTemplate reasoningServiceRestTemplate,
+            @Qualifier("reasoningServiceBiasRestTemplate") RestTemplate reasoningServiceBiasRestTemplate) {
         this.config = config;
         this.restTemplate = reasoningServiceRestTemplate;
+        this.biasRestTemplate = reasoningServiceBiasRestTemplate;
     }
 
     /**
@@ -70,6 +77,41 @@ public class ReasoningServiceClient {
         log.debug("POST {}/entities/extract - text length={}", config.getBaseUrl(), text.length());
         EntityExtractionResponse response = restTemplate.postForObject(url, request, EntityExtractionResponse.class);
         log.debug("Extraction returned {} entities", response != null ? response.getTotalCount() : 0);
+
+        return response;
+    }
+
+    /**
+     * Detect cognitive biases and logical fallacies in article text via
+     * POST /eval/bias/detect.
+     *
+     * Uses the separate, longer-timeout bias RestTemplate (60s per NFR2) —
+     * this endpoint is LLM-backed and materially slower than
+     * /entities/extract, unlike that endpoint's spaCy-backed fast path.
+     *
+     * @param text article text to analyze
+     * @param grounded true for SPARQL-grounded LLM prompting; false for a generic prompt
+     * @return the bias-detection response
+     * @throws org.springframework.web.client.RestClientException on any HTTP/network failure
+     */
+    public BiasDetectionResponse detectBias(String text, boolean grounded) {
+        String url = config.getBaseUrl() + "/eval/bias/detect";
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("text", text);
+        body.put("confidence_threshold", 0.0f);
+        body.put("include_ontology_metadata", true);
+        body.put("grounded", grounded);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(API_KEY_HEADER, config.getApiKey());
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+        log.debug("POST {}/eval/bias/detect - text length={}, grounded={}", config.getBaseUrl(), text.length(), grounded);
+        BiasDetectionResponse response = biasRestTemplate.postForObject(url, request, BiasDetectionResponse.class);
+        log.debug("Bias detection returned {} annotations", response != null ? response.getTotalCount() : 0);
 
         return response;
     }

@@ -4,12 +4,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.newsanalyzer.TestcontainersConfiguration;
 import org.newsanalyzer.dto.ArticleDTO;
+import org.newsanalyzer.dto.BiasAnnotationData;
+import org.newsanalyzer.dto.BiasDetectionResponse;
 import org.newsanalyzer.dto.CreateArticleRequest;
 import org.newsanalyzer.dto.EntityExtractionResponse;
 import org.newsanalyzer.dto.ExtractedEntityData;
+import org.newsanalyzer.model.ArticleBiasAnnotation;
 import org.newsanalyzer.model.ArticleStatus;
 import org.newsanalyzer.model.Entity;
 import org.newsanalyzer.model.EntityType;
+import org.newsanalyzer.repository.ArticleBiasAnnotationRepository;
 import org.newsanalyzer.repository.ArticleRepository;
 import org.newsanalyzer.repository.EntityRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,17 +26,19 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
  * Integration test for the full article-submission -> entity-extraction ->
- * persistence flow (Story ES-1.3, AC5). Runs against a real PostgreSQL
- * container (mirroring ArticleRepositoryTest's setup) so the FK link between
- * Article and Entity is proven end-to-end. Only ReasoningServiceClient is
- * mocked, since it is the actual HTTP boundary to the (separately owned)
- * reasoning service — everything else runs as it would in production.
+ * bias-detection -> persistence flow (Stories ES-1.3 AC5, ES-1.4 AC6). Runs
+ * against a real PostgreSQL container (mirroring ArticleRepositoryTest's
+ * setup) so the FK links between Article, Entity, and ArticleBiasAnnotation
+ * are proven end-to-end. Only ReasoningServiceClient is mocked, since it is
+ * the actual HTTP boundary to the (separately owned) reasoning service —
+ * everything else runs as it would in production.
  */
 @SpringBootTest
 @ActiveProfiles("tc")
@@ -48,6 +54,9 @@ class ArticleExtractionIntegrationTest {
     @Autowired
     private EntityRepository entityRepository;
 
+    @Autowired
+    private ArticleBiasAnnotationRepository articleBiasAnnotationRepository;
+
     @MockBean
     private ReasoningServiceClient reasoningServiceClient;
 
@@ -55,6 +64,7 @@ class ArticleExtractionIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        articleBiasAnnotationRepository.deleteAll();
         articleRepository.deleteAll();
         entityRepository.deleteAll();
 
@@ -62,6 +72,13 @@ class ArticleExtractionIntegrationTest {
         createRequest.setSourceName("CNN");
         createRequest.setUrl("https://example.com/article");
         createRequest.setRawText("Senator Warren met with EPA officials.");
+    }
+
+    private BiasDetectionResponse emptyBiasDetectionResponse() {
+        BiasDetectionResponse response = new BiasDetectionResponse();
+        response.setAnnotations(List.of());
+        response.setTotalCount(0);
+        return response;
     }
 
     @Test
@@ -148,5 +165,83 @@ class ArticleExtractionIntegrationTest {
             .toList();
         assertTrue(linkedEntities.isEmpty(),
             "The valid entity processed before the failing one must be rolled back, not left orphaned");
+    }
+
+    @Test
+    void testCreateArticle_biasDetectionSucceeds_annotationsPersistedAndLinked() {
+        EntityExtractionResponse emptyExtractionResponse = new EntityExtractionResponse();
+        emptyExtractionResponse.setEntities(List.of());
+        emptyExtractionResponse.setTotalCount(0);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat()))
+            .thenReturn(emptyExtractionResponse);
+
+        BiasAnnotationData annotation = new BiasAnnotationData();
+        annotation.setDistortionType("hasty_generalization");
+        annotation.setCategory("cognitive_bias");
+        annotation.setExcerpt("The administration has always been corrupt");
+        annotation.setExplanation("Uses absolute language to generalize from limited evidence.");
+        annotation.setConfidence(0.87f);
+        annotation.setOntologyMetadata(Map.of(
+            "definition", "Drawing a broad conclusion from a small or unrepresentative sample.",
+            "academic_source", "Kahneman, 2011"
+        ));
+
+        BiasDetectionResponse response = new BiasDetectionResponse();
+        response.setAnnotations(List.of(annotation));
+        response.setTotalCount(1);
+        when(reasoningServiceClient.detectBias(anyString(), anyBoolean())).thenReturn(response);
+
+        ArticleDTO created = articleService.createArticle(createRequest);
+
+        assertEquals(ArticleStatus.SUCCESS, created.getBiasDetectionStatus());
+        // AC4: reliabilityScore stays null — this story doesn't populate it,
+        // no cross-article aggregation logic exists yet.
+        assertNull(created.getReliabilityScore());
+
+        List<ArticleBiasAnnotation> linkedAnnotations = articleBiasAnnotationRepository.findAll().stream()
+            .filter(a -> created.getId().equals(a.getArticleId()))
+            .toList();
+
+        assertEquals(1, linkedAnnotations.size());
+        ArticleBiasAnnotation persisted = linkedAnnotations.get(0);
+        assertEquals("hasty_generalization", persisted.getDistortionType());
+        assertEquals("cognitive_bias", persisted.getCategory());
+        assertEquals(0.87f, persisted.getConfidence());
+        assertNotNull(persisted.getOntologyMetadata());
+    }
+
+    @Test
+    void testCreateArticle_biasDetectionFails_articleAndEntitiesPersistWithNoAnnotations() {
+        ExtractedEntityData extracted = new ExtractedEntityData();
+        extracted.setText("Elizabeth Warren");
+        extracted.setEntityType("person");
+        extracted.setConfidence(0.85f);
+        extracted.setSchemaOrgType("Person");
+
+        EntityExtractionResponse extractionResponse = new EntityExtractionResponse();
+        extractionResponse.setEntities(List.of(extracted));
+        extractionResponse.setTotalCount(1);
+        when(reasoningServiceClient.extractEntities(anyString(), anyFloat())).thenReturn(extractionResponse);
+
+        when(reasoningServiceClient.detectBias(anyString(), anyBoolean()))
+            .thenThrow(new RestClientException("Reasoning service timeout"));
+
+        ArticleDTO created = articleService.createArticle(createRequest);
+
+        // Bias-detection failure must never block Article or Entity persistence.
+        assertNotNull(articleRepository.findById(created.getId()).orElse(null));
+        assertEquals(ArticleStatus.FAILED, created.getBiasDetectionStatus());
+
+        // Extraction succeeded independently of bias-detection's failure (NFR3).
+        assertEquals(ArticleStatus.SUCCESS, created.getExtractionStatus());
+        List<Entity> linkedEntities = entityRepository.findAll().stream()
+            .filter(e -> created.getId().equals(e.getArticleId()))
+            .toList();
+        assertEquals(1, linkedEntities.size());
+
+        List<ArticleBiasAnnotation> linkedAnnotations = articleBiasAnnotationRepository.findAll().stream()
+            .filter(a -> created.getId().equals(a.getArticleId()))
+            .toList();
+        assertTrue(linkedAnnotations.isEmpty());
     }
 }

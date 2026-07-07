@@ -43,9 +43,20 @@ public class ReasoningServiceConfig {
     private String apiKey;
 
     /**
-     * Request timeout in milliseconds (30s per NFR1 / reasoning-service-contract.md)
+     * Request timeout in milliseconds for the fast, spaCy-backed
+     * /entities/extract endpoint (30s per NFR1 / reasoning-service-contract.md)
      */
     private int timeout = 30000;
+
+    /**
+     * Request timeout in milliseconds for the slower, LLM-backed
+     * /eval/bias/detect endpoint (60s per NFR2 / reasoning-service-contract.md,
+     * Story ES-1.4). Deliberately a separate property/bean from {@link #timeout} —
+     * sharing one timeout would force /entities/extract to wait as long as the
+     * LLM-backed call before failing fast, silently widening its documented 30s
+     * budget.
+     */
+    private int biasTimeout = 60000;
 
     /**
      * Check if API key is configured
@@ -59,6 +70,14 @@ public class ReasoningServiceConfig {
         return builder
             .setConnectTimeout(Duration.ofMillis(timeout))
             .setReadTimeout(Duration.ofMillis(timeout))
+            .build();
+    }
+
+    @Bean
+    public RestTemplate reasoningServiceBiasRestTemplate(RestTemplateBuilder builder) {
+        return builder
+            .setConnectTimeout(Duration.ofMillis(biasTimeout))
+            .setReadTimeout(Duration.ofMillis(biasTimeout))
             .build();
     }
 }

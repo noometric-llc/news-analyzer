@@ -164,6 +164,7 @@ ontology-grounded neuro-symbolic analysis (SPARQL + Claude LLM).
 **Called by:**
 - Eval harness `bias_provider.py` — grounded mode (`grounded=true`)
 - Eval harness `bias_provider_ungrounded.py` — ungrounded mode (`grounded=false`)
+- Article ingestion service (news-analyzer) — `ArticleService`, via `ReasoningServiceClient.detectBias()`, always `grounded=true` (Story ES-1.4)
 
 > **Note:** This endpoint is currently called by the eval harness only, not by the
 > production NewsAnalyzer UI. It is included in the public contract because it

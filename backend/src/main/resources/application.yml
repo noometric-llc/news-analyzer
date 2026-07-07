@@ -43,3 +43,4 @@ reasoning-service:
   base-url: ${REASONING_SERVICE_URL:http://localhost:8000}
   api-key: ${NOOMETRIC_API_KEY:}
   timeout: 30000
+  bias-timeout: 60000

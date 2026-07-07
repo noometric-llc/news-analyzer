@@ -3,30 +3,37 @@ package org.newsanalyzer.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.newsanalyzer.dto.ArticleDTO;
+import org.newsanalyzer.dto.BiasAnnotationData;
+import org.newsanalyzer.dto.BiasDetectionResponse;
 import org.newsanalyzer.dto.CreateArticleRequest;
 import org.newsanalyzer.dto.EntityExtractionResponse;
 import org.newsanalyzer.exception.ResourceNotFoundException;
 import org.newsanalyzer.model.Article;
+import org.newsanalyzer.model.ArticleBiasAnnotation;
 import org.newsanalyzer.model.ArticleStatus;
+import org.newsanalyzer.repository.ArticleBiasAnnotationRepository;
 import org.newsanalyzer.repository.ArticleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service layer for Article operations.
  *
  * Story ES-1.3 adds entity-extraction orchestration on top of ES-1.2's
- * persistence-only createArticle(). IMPORTANT: createArticle() itself is
- * deliberately NOT @Transactional — see the class-level note on
+ * persistence-only createArticle(). Story ES-1.4 adds a second, independent
+ * pipeline stage for bias/fallacy detection. IMPORTANT: createArticle()
+ * itself is deliberately NOT @Transactional — see the class-level note on
  * extractAndPersistEntities() for why. Each individual persistence step
- * (articleRepository.save(), entityService.createEntitiesFromExtraction())
- * carries its own short transaction — the entity batch is one atomic
- * transaction covering the whole batch, not one per entity, see that
- * method's Javadoc — and the ~30s reasoning-service call in between runs
- * outside of any transaction.
+ * (articleRepository.save(), entityService.createEntitiesFromExtraction(),
+ * articleBiasAnnotationRepository.saveAll()) carries its own short
+ * transaction — each batch (entities, then annotations) is atomic as a
+ * whole, not per-record — and the external reasoning-service calls in
+ * between run outside of any transaction.
  */
 @Slf4j
 @Service
@@ -34,8 +41,10 @@ import java.util.UUID;
 public class ArticleService {
 
     private static final float DEFAULT_CONFIDENCE_THRESHOLD = 0.7f;
+    private static final boolean BIAS_DETECTION_GROUNDED = true;
 
     private final ArticleRepository articleRepository;
+    private final ArticleBiasAnnotationRepository articleBiasAnnotationRepository;
     private final ReasoningServiceClient reasoningServiceClient;
     private final EntityService entityService;
 
@@ -74,7 +83,13 @@ public class ArticleService {
         // saved already exists regardless of what happens next.
         Article withExtractionResult = extractAndPersistEntities(saved);
 
-        return toDTO(withExtractionResult);
+        // Step 4 (no transaction) + Step 5 (its own short transaction, on
+        // success): bias detection runs unconditionally after extraction,
+        // independent of whether extraction succeeded or failed (NFR2/NFR3)
+        // — extractAndPersistEntities() never throws, so this always runs.
+        Article withBiasResult = detectAndPersistBiasAnnotations(withExtractionResult);
+
+        return toDTO(withBiasResult);
     }
 
     /**
@@ -112,6 +127,63 @@ public class ArticleService {
 
         // Step 4: persist the status update — its own short transaction.
         return articleRepository.save(article);
+    }
+
+    /**
+     * Calls the reasoning service's bias/fallacy detector (no transaction)
+     * and, on success, persists the returned annotations as one atomic
+     * batch. Unlike entity extraction, no custom @Transactional batch method
+     * is needed here: mapping a BiasAnnotationData to an ArticleBiasAnnotation
+     * is a plain field copy that can't itself fail (distortionType/category
+     * are passed through as-is, never enum-parsed), so building the full list
+     * in memory first and calling articleBiasAnnotationRepository.saveAll()
+     * once already gets all-or-nothing persistence for free — saveAll() is
+     * itself @Transactional (Spring Data JPA's default), and this is a
+     * genuine cross-bean call through that repository's proxy.
+     *
+     * Runs unconditionally after extraction, independent of whether
+     * extraction succeeded or failed (NFR2/NFR3) — this is a fundamentally
+     * separate failure mode from extractionStatus, tracked in its own
+     * biasDetectionStatus field so one can never mask the other.
+     */
+    private Article detectAndPersistBiasAnnotations(Article article) {
+        try {
+            BiasDetectionResponse response =
+                reasoningServiceClient.detectBias(article.getRawText(), BIAS_DETECTION_GROUNDED);
+
+            if (response != null && response.getAnnotations() != null && !response.getAnnotations().isEmpty()) {
+                List<ArticleBiasAnnotation> annotations = response.getAnnotations().stream()
+                    .map(data -> toBiasAnnotationEntity(data, article.getId()))
+                    .collect(Collectors.toList());
+                articleBiasAnnotationRepository.saveAll(annotations);
+                log.info("Bias detection succeeded for article {}: {} annotations linked",
+                    article.getId(), annotations.size());
+            }
+
+            article.setBiasDetectionStatus(ArticleStatus.SUCCESS);
+        } catch (RestClientException e) {
+            log.warn("Bias detection failed for article {}: {}", article.getId(), e.getMessage());
+            article.setBiasDetectionStatus(ArticleStatus.FAILED);
+        } catch (Exception e) {
+            log.error("Unexpected error during bias detection for article {}: {}",
+                article.getId(), e.getMessage(), e);
+            article.setBiasDetectionStatus(ArticleStatus.FAILED);
+        }
+
+        // Step 5: persist the status update — its own short transaction.
+        return articleRepository.save(article);
+    }
+
+    private ArticleBiasAnnotation toBiasAnnotationEntity(BiasAnnotationData data, UUID articleId) {
+        ArticleBiasAnnotation annotation = new ArticleBiasAnnotation();
+        annotation.setArticleId(articleId);
+        annotation.setDistortionType(data.getDistortionType());
+        annotation.setCategory(data.getCategory());
+        annotation.setExcerpt(data.getExcerpt());
+        annotation.setExplanation(data.getExplanation());
+        annotation.setConfidence(data.getConfidence());
+        annotation.setOntologyMetadata(data.getOntologyMetadata());
+        return annotation;
     }
 
     /**

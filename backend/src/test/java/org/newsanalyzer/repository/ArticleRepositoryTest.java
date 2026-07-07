@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.newsanalyzer.TestcontainersConfiguration;
 import org.newsanalyzer.model.Article;
+import org.newsanalyzer.model.ArticleBiasAnnotation;
 import org.newsanalyzer.model.ArticleStatus;
 import org.newsanalyzer.model.Entity;
 import org.newsanalyzer.model.EntityType;
@@ -45,10 +46,14 @@ class ArticleRepositoryTest {
     @Autowired
     private EntityRepository entityRepository;
 
+    @Autowired
+    private ArticleBiasAnnotationRepository articleBiasAnnotationRepository;
+
     private Article testArticle;
 
     @BeforeEach
     void setUp() {
+        articleBiasAnnotationRepository.deleteAll();
         articleRepository.deleteAll();
         entityRepository.deleteAll();
 
@@ -211,5 +216,32 @@ class ArticleRepositoryTest {
         Optional<Entity> found = entityRepository.findById(savedEntity.getId());
         assertTrue(found.isPresent(), "Entity must survive its linked Article's deletion");
         assertNull(found.get().getArticleId());
+    }
+
+    @Test
+    void testArticleBiasAnnotationCascadeDeleteOnArticleDelete() {
+        // Proves the ON DELETE CASCADE behavior from V47 — deliberately the
+        // opposite of entities.article_id's SET NULL, since an annotation has
+        // no independent meaning without its source article (see V47's
+        // migration comment and ArticleBiasAnnotation's Javadoc).
+        Article savedArticle = articleRepository.save(testArticle);
+        entityManager.flush();
+
+        ArticleBiasAnnotation annotation = new ArticleBiasAnnotation();
+        annotation.setArticleId(savedArticle.getId());
+        annotation.setDistortionType("hasty_generalization");
+        annotation.setCategory("cognitive_bias");
+        annotation.setExcerpt("The administration has always been corrupt");
+        annotation.setExplanation("Uses absolute language to generalize from limited evidence.");
+        annotation.setConfidence(0.87f);
+        ArticleBiasAnnotation savedAnnotation = articleBiasAnnotationRepository.save(annotation);
+        entityManager.flush();
+
+        articleRepository.deleteById(savedArticle.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        Optional<ArticleBiasAnnotation> found = articleBiasAnnotationRepository.findById(savedAnnotation.getId());
+        assertFalse(found.isPresent(), "Annotation must be deleted along with its Article, not orphaned");
     }
 }

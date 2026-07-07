@@ -84,8 +84,8 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 |----|-------|--------|
 | ES-1.1 | [Article Persistence Model](ES-1.1.article-persistence-model.md) | Ready for Done |
 | ES-1.2 | [Article Ingestion API (Persistence Only)](ES-1.2.article-ingestion-api.md) | Ready for Done |
-| ES-1.3 | Entity Extraction Integration | Not yet drafted |
-| ES-1.4 | Bias/Fallacy Annotation Integration | Not yet drafted |
+| ES-1.3 | [Entity Extraction Integration](ES-1.3.entity-extraction-integration.md) | Ready for Done |
+| ES-1.4 | [Bias/Fallacy Annotation Integration](ES-1.4.bias-fallacy-annotation-integration.md) | Ready for Done ⚠ (pre-merge blocker open — see story) |
 | ES-1.5 | Grounded-Query Interface | Not yet drafted |
 | ES-1.6 | Eval Harness Real-Article Integration | Not yet drafted |
 
@@ -134,7 +134,7 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 | Unauthenticated, LLM-cost-bearing `/api/articles` endpoint | High | **Resolved** | Basic rate limiting added alongside the request-size cap (architecture doc, Security Integration) |
 | No retry-triggering mechanism despite "retriable" being asserted | Medium | Open, deferred to Phase 2 | Explicitly scoped out rather than silently assumed handled |
 | No circuit breaker for reasoning-service calls | Medium | Open, deferred to Phase 2 | Tolerable at MVP's manual/low-volume scope |
-| `/eval/bias/detect` rate limits/quotas unconfirmed | Medium | Open — action item | Must be confirmed with `noometric-intelligence` before ES-1.4 implementation (PO validation finding) |
+| `/eval/bias/detect` rate limits/quotas unconfirmed | Medium | Open — pre-merge blocker | ES-1.4 implementation proceeded on an explicit, documented PO risk acceptance (2026-07-06) rather than a confirmed answer. Must still be confirmed with `noometric-intelligence` (or that acceptance explicitly reconfirmed) before ES-1.4 merges to `main` — see the story's own pre-merge blocker callout |
 | Article full-text copyright/retention posture unresolved | Low-Medium | Open — needs legal input | Flagged for `business-attorney` per CLAUDE.md's Noometric agent table, before real (non-test) content ingestion scales |
 
 ## Definition of Done
@@ -163,6 +163,11 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 | 2026-07-03 | 1.1 | ES-1.1 status updated to Ready for Review; table rename reconciled (`articles` → `evidence_articles`) after Story ES-1.1 implementation discovered a pre-existing, unused table of that name from `V1__initial_schema.sql` | Sarah (PO) / Steve Kosuth-Wood |
 | 2026-07-04 | 1.2 | ES-1.1 completed — QA gate PASS (quality score 100), status updated to Ready for Done. ES-1.2 drafted and linked. | Sarah (PO) / Steve Kosuth-Wood |
 | 2026-07-04 | 1.3 | ES-1.2 completed — QA gate PASS (quality score 95), status updated to Ready for Done. Two of six ES-1 stories now done. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-04 | 1.4 | ES-1.3 drafted and linked — first story to build ReasoningServiceClient and wire in the deferred rate-limiting requirement (AC6, carried from ES-1.2) | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-06 | 1.5 | ES-1.3 completed — QA found and Dev fixed two real CONCERNS (NOOMETRIC_API_KEY never reaching the container in any docker-compose environment; mid-batch entity extraction failures leaving orphaned entities under a FAILED status), re-reviewed to QA gate PASS (quality score 100), status updated to Ready for Done. Three of six ES-1 stories now done. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-06 | 1.6 | ES-1.4 drafted and linked. Explicit product decision: drafting/implementation may proceed despite the epic risk table's unconfirmed `/eval/bias/detect` rate-limit/quota question, but the story is blocked from merging until that's resolved — tracked as Task 1, separate from the code tasks, so it can't be silently dropped. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-06 | 1.7 | ES-1.4 validated (GO, readiness 9/10) and approved — cleared for dev agent pickup. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-07 | 1.8 | ES-1.4 completed — QA independently traced a claimed "production crash" finding to the existing broad exception handler already covering it gracefully, then closed the one real gap underneath (a missing test), re-reviewed to QA gate PASS (quality score 100), status updated to Ready for Done. Four of six ES-1 stories now done. Risks table updated: `/eval/bias/detect` rate-limit/quota question remains an explicit pre-merge blocker, not resolved by dev-complete status. | Sarah (PO) / Steve Kosuth-Wood |
 
 ## Architectural Review Summary
 

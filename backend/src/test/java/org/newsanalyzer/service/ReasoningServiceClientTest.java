@@ -3,6 +3,7 @@ package org.newsanalyzer.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.newsanalyzer.config.ReasoningServiceConfig;
+import org.newsanalyzer.dto.BiasDetectionResponse;
 import org.newsanalyzer.dto.EntityExtractionResponse;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -25,7 +26,9 @@ class ReasoningServiceClientTest {
 
     private ReasoningServiceConfig config;
     private RestTemplate restTemplate;
+    private RestTemplate biasRestTemplate;
     private MockRestServiceServer mockServer;
+    private MockRestServiceServer biasMockServer;
     private ReasoningServiceClient client;
 
     @BeforeEach
@@ -34,10 +37,15 @@ class ReasoningServiceClientTest {
         config.setBaseUrl("http://localhost:8000");
         config.setApiKey("test-api-key");
         config.setTimeout(30000);
+        config.setBiasTimeout(60000);
 
         restTemplate = new RestTemplate();
         mockServer = MockRestServiceServer.createServer(restTemplate);
-        client = new ReasoningServiceClient(config, restTemplate);
+
+        biasRestTemplate = new RestTemplate();
+        biasMockServer = MockRestServiceServer.createServer(biasRestTemplate);
+
+        client = new ReasoningServiceClient(config, restTemplate, biasRestTemplate);
     }
 
     @Test
@@ -115,5 +123,89 @@ class ReasoningServiceClientTest {
 
         assertThrows(RestClientException.class, () ->
             client.extractEntities("Some text.", 0.7f));
+    }
+
+    @Test
+    void testDetectBias_success() {
+        String mockResponse = """
+            {
+              "annotations": [
+                {
+                  "distortion_type": "hasty_generalization",
+                  "category": "cognitive_bias",
+                  "excerpt": "The administration has always been corrupt",
+                  "explanation": "Uses absolute language to generalize from limited evidence.",
+                  "confidence": 0.87,
+                  "ontology_metadata": {
+                    "definition": "Drawing a broad conclusion from a small or unrepresentative sample.",
+                    "academic_source": "Kahneman, 2011",
+                    "detection_pattern": "Look for absolute quantifiers combined with evaluative claims."
+                  }
+                }
+              ],
+              "total_count": 1,
+              "distortions_checked": ["hasty_generalization", "confirmation_bias"],
+              "shacl_valid": true
+            }
+            """;
+
+        biasMockServer.expect(requestTo("http://localhost:8000/eval/bias/detect"))
+            .andExpect(method(org.springframework.http.HttpMethod.POST))
+            .andExpect(header("X-Noometric-API-Key", "test-api-key"))
+            .andExpect(jsonPath("$.text").value("The administration has always been corrupt."))
+            .andExpect(jsonPath("$.grounded").value(true))
+            .andExpect(jsonPath("$.confidence_threshold").value(0.0))
+            .andExpect(jsonPath("$.include_ontology_metadata").value(true))
+            .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
+
+        BiasDetectionResponse response =
+            client.detectBias("The administration has always been corrupt.", true);
+
+        assertNotNull(response);
+        assertEquals(1, response.getTotalCount());
+        assertEquals(1, response.getAnnotations().size());
+        assertEquals("hasty_generalization", response.getAnnotations().get(0).getDistortionType());
+        assertEquals("cognitive_bias", response.getAnnotations().get(0).getCategory());
+        assertEquals(0.87f, response.getAnnotations().get(0).getConfidence());
+        assertNotNull(response.getAnnotations().get(0).getOntologyMetadata());
+        assertTrue(response.getShaclValid());
+
+        biasMockServer.verify();
+    }
+
+    @Test
+    void testDetectBias_emptyResults() {
+        String mockResponse = """
+            {"annotations": [], "total_count": 0, "distortions_checked": [], "shacl_valid": true}
+            """;
+
+        biasMockServer.expect(requestTo("http://localhost:8000/eval/bias/detect"))
+            .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
+
+        BiasDetectionResponse response = client.detectBias("No bias here.", true);
+
+        assertNotNull(response);
+        assertEquals(0, response.getTotalCount());
+        assertTrue(response.getAnnotations().isEmpty());
+    }
+
+    @Test
+    void testDetectBias_serverError_throwsRestClientException() {
+        biasMockServer.expect(requestTo("http://localhost:8000/eval/bias/detect"))
+            .andRespond(withServerError());
+
+        assertThrows(HttpServerErrorException.class, () ->
+            client.detectBias("Some text.", true));
+    }
+
+    @Test
+    void testDetectBias_networkFailure_throwsRestClientException() {
+        biasMockServer.expect(requestTo("http://localhost:8000/eval/bias/detect"))
+            .andRespond(request -> {
+                throw new ResourceAccessException("Connection refused");
+            });
+
+        assertThrows(RestClientException.class, () ->
+            client.detectBias("Some text.", true));
     }
 }
