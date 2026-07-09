@@ -29,6 +29,11 @@ public interface EntityRepository extends JpaRepository<Entity, UUID> {
     List<Entity> findByEntityType(EntityType entityType);
 
     /**
+     * Find entities linked to a specific article (Story ES-1.6)
+     */
+    List<Entity> findByArticleId(UUID articleId);
+
+    /**
      * Find entities by Schema.org type
      */
     @Query("SELECT e FROM Entity e WHERE e.schemaOrgType = :schemaOrgType")

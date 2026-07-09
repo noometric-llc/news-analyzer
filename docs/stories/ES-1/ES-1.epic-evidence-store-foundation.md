@@ -87,7 +87,7 @@ Establish a persisted, source-attributed Evidence Store in NewsAnalyzer — arti
 | ES-1.3 | [Entity Extraction Integration](ES-1.3.entity-extraction-integration.md) | Ready for Done |
 | ES-1.4 | [Bias/Fallacy Annotation Integration](ES-1.4.bias-fallacy-annotation-integration.md) | Ready for Done ⚠ (pre-merge blocker open — see story) |
 | ES-1.5 | Grounded-Query Interface | Not yet drafted |
-| ES-1.6 | Eval Harness Real-Article Integration | Not yet drafted |
+| ES-1.6 | [Eval Harness Real-Article Integration](ES-1.6.eval-harness-real-article-integration.md) | Ready for Done |
 
 *(Full acceptance criteria for ES-1.2 through ES-1.6 are defined in `docs/prd/ES-1.md`; they will be drafted as individual story files following the ES-1.1 pattern before implementation.)*
 
@@ -105,21 +105,21 @@ ES-1.3         ES-1.4
 (Extraction)   (Bias Detection)
     │              │
     └──────┬───────┘
-           ▼
-        ES-1.5
-     (Grounded Query)
            │
-           ▼
-        ES-1.6
-   (Eval Harness Integration)
+           ├───────────────┐
+           ▼                ▼
+        ES-1.5           ES-1.6
+     (Grounded Query)  (Eval Harness Integration)
 ```
 
 ES-1.3 and ES-1.4 are logically independent of each other (both depend only on ES-1.2) but are sequenced serially in the PRD specifically so bias-detection's failure mode — the first production use of an LLM-backed, previously-unused endpoint — can't take down extraction if something goes wrong.
 
+**Sequencing deviation (2026-07-07):** ES-1.6 was drafted and sequenced as a sibling of ES-1.5 rather than depending on it, per an explicit product decision. ES-1.6's actual PRD acceptance criteria only require reading persisted `Article`/`Entity`/`ArticleBiasAnnotation` data (all complete as of ES-1.4) — none of them require ES-1.5's grounded-query endpoint or its NFR4 "no silent blending" semantics. The original diagram's arrow reflected an assumed build order, not a hard technical dependency. See `ES-1.6.eval-harness-real-article-integration.md`'s Sequencing Note for the full rationale.
+
 ## Acceptance Criteria (Epic Level)
 
 1. **Schema Foundation:** `evidence_articles` and `article_bias_annotations` tables exist; `entities.article_id` is a nullable, additive FK — verified via Flyway migration review and IV1-style regression tests.
-2. **Ingestion Pipeline:** An article submitted via API is persisted, has entities extracted and linked, and has bias annotations attached — end-to-end, verified by at least one real (non-synthetic) test article (per ES-1.6).
+2. **Ingestion Pipeline:** An article submitted via API is persisted, has entities extracted and linked, and has bias annotations attached — end-to-end, verified by at least one real (non-synthetic) test article (per ES-1.6). **✓ Verified** — `EvalRealArticleIntegrationTest` (ES-1.6) proves this end-to-end against real Postgres.
 3. **Zero Silent Blending:** The grounded-query interface always distinguishes evidence-backed results from "no grounded evidence found" — never an ambiguous response.
 4. **Zero Regression:** The full existing `mvn test` suite passes unchanged; `/api/entities` and `/api/government-orgs` behavior is unaffected.
 5. **Contract Documentation Updated:** `docs/api/reasoning-service-contract.md` reflects NewsAnalyzer's backend as a new production caller of `/eval/bias/detect`.
@@ -139,12 +139,12 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 
 ## Definition of Done
 
-- [ ] All 6 stories (ES-1.1–ES-1.6) drafted, implemented, and merged
-- [ ] Full existing test suite passes with zero regressions
-- [ ] At least one real ingested article demonstrates the full pipeline end-to-end
-- [ ] `reasoning-service-contract.md` updated to reflect the new production caller
-- [ ] Reasoning-service rate-limit/quota question resolved before ES-1.4 merges
-- [ ] Code reviewed and follows `coding-standards.md` conventions throughout
+- [ ] All 6 stories (ES-1.1–ES-1.6) drafted, implemented, and merged (ES-1.5 not yet drafted)
+- [ ] Full existing test suite passes with zero regressions (true at each story's point-in-time to date — 875 Java + 84 Python as of ES-1.6; final check pending ES-1.5)
+- [x] At least one real ingested article demonstrates the full pipeline end-to-end — `EvalRealArticleIntegrationTest` (ES-1.6)
+- [x] `reasoning-service-contract.md` updated to reflect the new production caller — done in ES-1.4 for `/eval/bias/detect`
+- [ ] Reasoning-service rate-limit/quota question resolved before ES-1.4 merges — still an explicit PO risk acceptance, not a confirmed answer
+- [ ] Code reviewed and follows `coding-standards.md` conventions throughout (true for all stories completed so far; final check pending ES-1.5)
 
 ## Related Documentation
 
@@ -168,6 +168,9 @@ ES-1.3 and ES-1.4 are logically independent of each other (both depend only on E
 | 2026-07-06 | 1.6 | ES-1.4 drafted and linked. Explicit product decision: drafting/implementation may proceed despite the epic risk table's unconfirmed `/eval/bias/detect` rate-limit/quota question, but the story is blocked from merging until that's resolved — tracked as Task 1, separate from the code tasks, so it can't be silently dropped. | Sarah (PO) / Steve Kosuth-Wood |
 | 2026-07-06 | 1.7 | ES-1.4 validated (GO, readiness 9/10) and approved — cleared for dev agent pickup. | Sarah (PO) / Steve Kosuth-Wood |
 | 2026-07-07 | 1.8 | ES-1.4 completed — QA independently traced a claimed "production crash" finding to the existing broad exception handler already covering it gracefully, then closed the one real gap underneath (a missing test), re-reviewed to QA gate PASS (quality score 100), status updated to Ready for Done. Four of six ES-1 stories now done. Risks table updated: `/eval/bias/detect` rate-limit/quota question remains an explicit pre-merge blocker, not resolved by dev-complete status. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-07 | 1.9 | ES-1.6 drafted and linked out of sequence, ahead of ES-1.5 — per explicit product decision, since ES-1.6's actual ACs don't require ES-1.5's grounded-query endpoint. Dependency graph updated to show ES-1.5/ES-1.6 as siblings, not a chain. Also narrowed ES-1.6's scope from the PRD's literal "validation" wording to read-access/smoke-test only, since real articles have no curated ground truth for precision/recall scoring — that curation work is deferred, not silently dropped (tracked in the story and in `docs/evaluation-methodology.md`'s Future Work section once implemented). | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-08 | 2.0 | ES-1.6 validated (GO, readiness 10/10) and approved — cleared for dev agent pickup. | Sarah (PO) / Steve Kosuth-Wood |
+| 2026-07-09 | 2.1 | ES-1.6 completed — QA gate PASS (quality score 100), status updated to Ready for Done. Five of six ES-1 stories now done (only ES-1.5 remains, not yet drafted). Two epic-level Definition of Done items checked off: real-article end-to-end pipeline demonstration, and reasoning-service-contract.md's production-caller update. | Sarah (PO) / Steve Kosuth-Wood |
 
 ## Architectural Review Summary
 

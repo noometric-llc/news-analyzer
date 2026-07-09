@@ -208,10 +208,30 @@ A GitHub Actions workflow runs the spaCy evaluation on pushes that modify evalua
 
 ---
 
-## 7. Future Work
+## 7. Real-Article Read Path (Story ES-1.6)
+
+### Purpose
+
+Every methodology described above (gold dataset construction, precision/recall/F1 scoring) applies to `SyntheticArticle` records — EVAL-1-generated test articles with controlled perturbations and, eventually, human-curated ground truth. Story ES-1.6 adds a second, deliberately narrower capability: **read access to real, production-ingested articles' already-computed extraction and bias-detection results**, for pipeline smoke-testing and qualitative review.
+
+This is **not** a scoring mechanism. Real articles ingested via `POST /api/articles` have no curated ground truth — nobody has manually annotated every entity in a real news article the way the synthetic gold dataset was curated (see Section 2 above). Building that curation pipeline is a real, separate body of work, deliberately deferred rather than folded into this story (see Future Work below).
+
+### How It Works
+
+- `GET /api/eval/real-articles/{articleId}` (news-analyzer backend, `EvalRealArticleController`) bundles a persisted `Article`'s metadata with its linked `Entity` and `ArticleBiasAnnotation` records — read-only, triggers no re-extraction. If the article's `extractionStatus`/`biasDetectionStatus` aren't both `SUCCESS`, the endpoint still returns whatever data exists, with both statuses visible in the response.
+- `eval/scripts/read_real_article.py` calls that endpoint and displays the result. It is **not** a promptfoo provider (unlike `spacy_provider.py`/`bias_provider.py`) — it performs no scoring or assertion, so it is intentionally not registered in `promptfooconfig.yaml`.
+
+### Scope Boundary
+
+This path answers "did the full ingest → extract → bias-detect pipeline produce readable results for this real article?" — not "how accurate was the extraction?" The latter question requires ground-truth curation, which is out of scope here.
+
+---
+
+## 8. Future Work
 
 1. **EVAL-3: Cognitive Bias Evaluation** — Extend the harness pattern to evaluate bias detection using an ontology-grounded approach
 2. **Larger gold dataset** — Expand to 200+ curated articles with multiple annotators for inter-annotator agreement
 3. **Additional extractors** — Add GPT-4, Gemini, and larger spaCy models for broader comparison
 4. **Active learning** — Use evaluation results to identify articles where annotation would most improve the dataset
 5. **Prompt engineering** — Iterate on Claude's extraction prompt to improve precision on `concept` and `organization` types
+6. **Real-article ground-truth curation and scoring** — Extend Section 7's read-only path with human-curated ground truth for a sample of real articles, enabling the same precision/recall/F1 rigor synthetic articles already get (deferred from Story ES-1.6 — see that story's Scope Decision)

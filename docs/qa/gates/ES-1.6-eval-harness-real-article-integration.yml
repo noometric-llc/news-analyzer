@@ -1,0 +1,67 @@
+# Quality Gate Decision
+# Story: ES-1.6 Eval Harness Real-Article Integration
+
+schema: 1
+story: "ES-1.6"
+story_title: "Eval Harness Real-Article Integration"
+gate: PASS
+status_reason: "Smaller, lower-risk surface than ES-1.3/ES-1.4 (single new read-only GET endpoint, no external HTTP calls, no complex transaction boundary), and it holds up under independent verification. Cross-bean @Transactional(readOnly=true) delegation traced and confirmed correct. Jackson camelCase serialization assumption (relied on by the new Python script) verified against actual config — no global naming-strategy override exists. New script's lack of explicit connection-error handling confirmed consistent with the established derive_gold.py precedent it mirrors, not a new gap. A minor N+1 query pattern in entity-to-DTO mapping is inherited verbatim from EntityService's existing pattern, not introduced by this story. Both Java (875/875) and Python (84/84) test suites independently re-run and confirmed clean."
+reviewer: "Quinn (Test Architect)"
+updated: "2026-07-09T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues: []
+
+# Extended fields
+quality_score: 100
+expires: "2026-07-23T00:00:00Z"
+
+evidence:
+  tests_reviewed: 875
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+
+quality_assessment:
+  code_structure:
+    status: PASS
+    notes: "EvalRealArticleService delegates Article lookup to the existing, already-stable ArticleService.getArticleById() rather than re-deriving 404 handling — good reuse judgment, not duplication. RealArticleEvaluationDTO composes existing ArticleDTO/EntityDTO/ArticleBiasAnnotationDTO rather than inventing parallel nested shapes."
+  cross_domain_dependency:
+    status: PASS
+    notes: "First cross-domain dependency (eval domain -> product domain) in this codebase's eval package. Verified it's narrow and deliberate: one read-only method call, no new coupling beyond what AC1 actually needs."
+  transaction_correctness:
+    status: PASS
+    notes: "Traced the @Transactional(readOnly=true) cross-bean call chain by hand: EvalRealArticleService's class-level annotation and ArticleService.getArticleById()'s own annotation correctly share/join one transaction under default REQUIRED propagation — no conflict, no lazy-loading risk given the session stays open for the whole call"
+  cross_language_contract:
+    status: PASS
+    notes: "Verified (not assumed) that Jackson serializes these DTOs to camelCase JSON — no global property-naming-strategy override exists in application.yml or config classes — matching what the new Python script's field access (article['extractionStatus'], entity['entityType']) expects"
+  test_design:
+    status: PASS
+    notes: "All 4 AC5-required scenarios covered (data present, empty lists, 404, partial pipeline failure) at the unit level; AC6's full pipeline proven at the integration level against real Postgres. First ES-1 story to touch eval/, and Python-side regression was independently re-run, not just inspected."
+  documentation:
+    status: PASS
+    notes: "docs/evaluation-methodology.md's new section 7 correctly renumbers Future Work to section 8, no numbering gaps or duplicates; explicit scope boundary documented inline, not just in the story file"
+  story_administration:
+    status: PASS
+    notes: "File List cross-checked against git status — exact match, nothing missing or extra"
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No new information disclosure — ArticleDTO's fields (including rawText) were already exposed via the existing GET /api/articles/{id}; this endpoint reuses the same DTO, not a new exposure surface. No auth on this endpoint matches the whole application's existing (pre-existing, accepted) unauthenticated posture."
+  performance:
+    status: PASS
+    notes: "Minor N+1 query pattern in toEntityDTO()'s lazy government-organization access is inherited verbatim from EntityService.toDTO()'s existing pattern, not introduced here. Acceptable for a manual-review/smoke-test endpoint, not a high-traffic path."
+  reliability:
+    status: PASS
+    notes: "AC2's 'never gate on pipeline success' requirement verified both by direct code reading (no conditional check exists) and by a dedicated partial-pipeline-failure test"
+  maintainability:
+    status: PASS
+    notes: "New script's error-handling style (no explicit try/except around requests.get()) matches derive_gold.py's established precedent exactly, verified by reading that file, not assumed"
+
+recommendations:
+  future:
+    - action: "If this read endpoint's traffic ever grows beyond manual/CLI use, consider addressing the inherited N+1 query pattern (entity-to-government-org lazy loading) across all three call sites (EntityService, and now EvalRealArticleService) at once rather than one at a time"
+      refs: ["backend/src/main/java/org/newsanalyzer/service/eval/EvalRealArticleService.java", "backend/src/main/java/org/newsanalyzer/service/EntityService.java"]
