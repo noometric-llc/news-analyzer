@@ -1,0 +1,60 @@
+{
+  "experiment": "ontology-grounding-ab",
+  "generated": "2026-04-02",
+  "description": "A/B comparison isolating the effect of supplying formal ontology definitions of each cognitive distortion type to the bias detector. Identical dataset, prompts, scorer, and model across both arms; the providers differ only in the grounding block.",
+  "dataset": {
+    "file": "eval/datasets/bias/synthetic_biased.yaml",
+    "articles": 42,
+    "biases_in_gold": 42,
+    "difficulty_tiers": ["easy", "medium", "hard"],
+    "articles_per_tier": 14
+  },
+  "scorer": "eval/assertions/bias_scorer.py",
+  "arms": {
+    "grounded": {
+      "config": "eval/promptfoo-bias.yaml",
+      "provider": "eval/providers/bias_provider.py",
+      "source_file": "reports/bias/baseline_summary.json",
+      "aggregate": {
+        "precision": 0.7407,
+        "recall": 0.9756,
+        "f1": 0.8421,
+        "true_positives": 40.0,
+        "false_positives": 14.0,
+        "false_negatives": 1.0,
+        "total_detected": 53
+      },
+      "by_difficulty": {
+        "easy": { "precision": 0.6667, "recall": 1.0, "f1": 0.8, "article_count": 14 },
+        "medium": { "precision": 0.7297, "recall": 1.0, "f1": 0.8437, "article_count": 14 },
+        "hard": { "precision": 0.8621, "recall": 0.9259, "f1": 0.8929, "article_count": 14 }
+      }
+    },
+    "ungrounded": {
+      "config": "eval/promptfoo-bias-ungrounded.yaml",
+      "provider": "eval/providers/bias_provider_ungrounded.py",
+      "source_file": "reports/bias-ungrounded/baseline_summary.json",
+      "aggregate": {
+        "precision": 0.7231,
+        "recall": 0.5802,
+        "f1": 0.6438,
+        "true_positives": 23.5,
+        "false_positives": 9.0,
+        "false_negatives": 17.0,
+        "total_detected": 31
+      },
+      "by_difficulty": {
+        "easy": { "precision": 0.6296, "recall": 0.6296, "f1": 0.6296, "article_count": 14 },
+        "medium": { "precision": 0.8095, "recall": 0.6296, "f1": 0.7083, "article_count": 14 },
+        "hard": { "precision": 0.7647, "recall": 0.4815, "f1": 0.5909, "article_count": 14 }
+      }
+    }
+  },
+  "interpretation": {
+    "effect": "recall",
+    "delta_recall": -0.3954,
+    "delta_precision": -0.0176,
+    "note": "The measured effect is sensitivity, not fabrication. Precision is essentially unchanged and absolute false positives decreased (14 -> 9). Removing ontology definitions causes the detector to decline to classify rather than to invent classifications. This experiment is evidence about groundedness and recall; it is not evidence about hallucination rate."
+  },
+  "omitted": "Per-distortion-type breakdowns are present in the raw run output and are intentionally not published in this archive."
+}

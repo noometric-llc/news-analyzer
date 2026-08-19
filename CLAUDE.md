@@ -24,7 +24,7 @@ Routine pushes (bug fixes, dependency updates, documentation corrections, infras
 
 ## Relationship to Noometric Business Project
 
-This project is owned by Noometric LLC and referenced in the Noometric business project (`D:\noometric`) as both a demonstration vehicle and the live proof-of-concept system for the Behavioral Governance service offering.
+This project is owned by Noometric LLC and referenced in the Noometric business project (`D:\noometric`) as both a demonstration vehicle and the live proof-of-concept system for the Behavioral Contract Services offering.
 
 Noometric advisor agents relevant to decisions in this repo:
 

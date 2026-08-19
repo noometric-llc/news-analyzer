@@ -7,6 +7,8 @@ NewsAnalyzer demonstrates production-grade evaluation techniques for AI-powered 
 - **Cognitive bias detection evaluation** — Ontology-grounded neuro-symbolic evaluation
 - **Full-stack observability** — OpenTelemetry + Grafana LGTM stack across all services
 
+**→ [Measured evaluation results](eval/RESULTS.md)** — extractor comparison, the ontology-grounding A/B, and scorer validation, with archived summary data.
+
 This repository contains the evaluation framework and application shell.
 The Noometric Intelligence reasoning layer (cognitive bias ontology, entity extraction, proprietary detection methodology) is maintained separately by Noometric LLC and called via the `REASONING_SERVICE_URL` API.
 

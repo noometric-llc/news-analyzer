@@ -2,6 +2,8 @@
 
 Promptfoo-based evaluation harness that measures entity extraction quality (precision/recall/F1) by comparing two extractors — spaCy NER and Claude LLM — against a curated gold dataset.
 
+**→ [Measured results](RESULTS.md)** — extractor comparison across four datasets, the ontology-grounding A/B, and scorer validation.
+
 ## Prerequisites
 
 - **Node.js** 18+ (for Promptfoo CLI)

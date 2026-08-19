@@ -1,0 +1,85 @@
+{
+  "generated": "2026-04-06",
+  "branches": {
+    "judicial": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.19220779220779222,
+        "recall": 0.925,
+        "f1": 0.31827956989247314,
+        "true_positives": 74,
+        "false_positives": 311,
+        "false_negatives": 6,
+        "article_count": 13
+      },
+      "Claude Sonnet": {
+        "precision": 0.4561933534743202,
+        "recall": 0.937888198757764,
+        "f1": 0.6138211382113821,
+        "true_positives": 75.5,
+        "false_positives": 90,
+        "false_negatives": 5,
+        "article_count": 13
+      }
+    },
+    "executive": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.21998078770413065,
+        "recall": 0.9828326180257511,
+        "f1": 0.35949764521193095,
+        "true_positives": 114.5,
+        "false_positives": 406,
+        "false_negatives": 2,
+        "article_count": 17
+      },
+      "Claude Sonnet": {
+        "precision": 0.43157894736842106,
+        "recall": 1,
+        "f1": 0.6029411764705882,
+        "true_positives": 123,
+        "false_positives": 162,
+        "false_negatives": 0,
+        "article_count": 17
+      }
+    },
+    "legislative": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.1509433962264151,
+        "recall": 0.9632107023411371,
+        "f1": 0.2609877661984594,
+        "true_positives": 288,
+        "false_positives": 1620,
+        "false_negatives": 11,
+        "article_count": 49
+      },
+      "Claude Sonnet": {
+        "precision": 0.42589928057553955,
+        "recall": 0.976897689768977,
+        "f1": 0.593186372745491,
+        "true_positives": 296,
+        "false_positives": 399,
+        "false_negatives": 7,
+        "article_count": 49
+      }
+    },
+    "conll": {
+      "spaCy en_core_web_sm": {
+        "precision": 0.959731543624161,
+        "recall": 0.8562874251497006,
+        "f1": 0.9050632911392406,
+        "true_positives": 71.5,
+        "false_positives": 3,
+        "false_negatives": 12,
+        "article_count": 47
+      },
+      "Claude Sonnet": {
+        "precision": 0.7889447236180904,
+        "recall": 0.9631901840490797,
+        "f1": 0.8674033149171271,
+        "true_positives": 78.5,
+        "false_positives": 21,
+        "false_negatives": 3,
+        "article_count": 47
+      }
+    }
+  }
+}
